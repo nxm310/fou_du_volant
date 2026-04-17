@@ -438,7 +438,12 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-const { createClient } = window.supabase;
+// Fallback si jsdelivr n'a pas chargé
+if (!window.supabase) {
+  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+}
+</script>
+<script>
 
 // ============================================================
 //  CONFIG
@@ -502,8 +507,15 @@ function initSupabase() {
     statusEl.textContent = 'Non configuré — voir README';
     return false;
   }
+  // createClient peut venir de jsdelivr ou unpkg selon ce qui a chargé
+  const _createClient = (window.supabase && window.supabase.createClient)
+    || (window.supabaseJs && window.supabaseJs.createClient);
+  if (!_createClient) {
+    statusEl.textContent = 'Librairie Supabase non chargée';
+    return false;
+  }
   try {
-    STATE.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    STATE.supabase = _createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     statusEl.textContent = 'Connecté — tap long sur carte pour signaler';
     return true;
   } catch (e) {
