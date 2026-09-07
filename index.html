@@ -682,10 +682,29 @@ if (!window.JSZip) {
 
     <div style="border: 2px dashed rgba(255,255,255,0.22); border-radius:14px; padding:18px 12px; text-align:center; cursor:pointer; background:rgba(255,255,255,0.03); transition:all 0.2s;" id="dropZoneLufop">
       <div style="font-size:30px; margin-bottom:6px;">📦</div>
-      <div style="font-size:14px; font-weight:700;">Glissez un fichier ZIP, dossier, KML, ASC, CSV ou GPX</div>
-      <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Lit directement les archives .zip et dossiers complets</div>
-      <input type="file" id="inputLufopFile" accept=".zip,.kml,.asc,.csv,.gpx,.txt,.xml" multiple style="display:none;">
+      <div style="font-size:14px; font-weight:700;">Glissez ou touchez pour importer</div>
+      <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Fichiers ZIP, KML, ASC, CSV, GPX ou TXT</div>
     </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+      <button class="btn secondary" id="btnPickFiles" style="padding:10px 6px; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:5px;">
+        📦 <span>Fichiers / ZIP</span>
+      </button>
+      <button class="btn secondary" id="btnPickFolder" style="padding:10px 6px; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:5px;">
+        📂 <span>Dossier complet</span>
+      </button>
+    </div>
+
+    <input type="file" id="inputLufopFile" accept=".zip,application/zip,application/x-zip-compressed,.kml,.asc,.csv,.gpx,.txt,.xml,text/plain,*/*" multiple style="display:none;">
+    <input type="file" id="inputLufopFolder" webkitdirectory directory multiple style="display:none;">
+
+    <!-- iPhone Guide Callout -->
+    <div style="background:rgba(10,132,255,0.08); border:1px solid rgba(10,132,255,0.25); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:12px; line-height:1.45; text-align:left;">
+      <strong style="color:var(--accent); display:flex; align-items:center; gap:4px; margin-bottom:4px;">📱 Astuce iPhone / iPad :</strong>
+      • <strong>Méthode 1 (Idéale) :</strong> Touchez <em>Fichiers / ZIP</em> et choisissez directement le fichier <strong>.zip</strong> téléchargé (sans le décompresser).<br>
+      • <strong>Méthode 2 (Si déjà décompressé) :</strong> Entrez dans le dossier, touchez les <strong>« ... »</strong> ou <strong>« Sélectionner »</strong> en haut à droite &gt; <strong>« Tout sélectionner »</strong> &gt; <strong>« Ouvrir »</strong>.
+    </div>
+
     <div id="lufopImportStatus" style="font-size:12px; color:var(--success); font-weight:700; margin-top:10px; display:none; background:rgba(48,209,88,0.1); border:1px solid rgba(48,209,88,0.3); border-radius:10px; padding:8px 12px;"></div>
   </div>
 
@@ -1842,9 +1861,15 @@ document.getElementById('btnSaveSupabase').onclick = () => {
 // Lufop / Multi-format File & ZIP Import
 const dropZoneLufop = document.getElementById('dropZoneLufop');
 const inputLufopFile = document.getElementById('inputLufopFile');
+const inputLufopFolder = document.getElementById('inputLufopFolder');
+const btnPickFiles = document.getElementById('btnPickFiles');
+const btnPickFolder = document.getElementById('btnPickFolder');
 const lufopStatusEl = document.getElementById('lufopImportStatus');
 
 dropZoneLufop.onclick = () => inputLufopFile.click();
+if (btnPickFiles) btnPickFiles.onclick = () => inputLufopFile.click();
+if (btnPickFolder) btnPickFolder.onclick = () => inputLufopFolder.click();
+
 dropZoneLufop.ondragover = (e) => { e.preventDefault(); dropZoneLufop.style.background = 'rgba(10,132,255,0.12)'; };
 dropZoneLufop.ondragleave = () => { dropZoneLufop.style.background = 'rgba(255,255,255,0.03)'; };
 dropZoneLufop.ondrop = async (e) => {
@@ -1858,6 +1883,13 @@ dropZoneLufop.ondrop = async (e) => {
 inputLufopFile.onchange = () => {
   if (inputLufopFile.files && inputLufopFile.files.length > 0) {
     processImportFiles(Array.from(inputLufopFile.files));
+    inputLufopFile.value = '';
+  }
+};
+inputLufopFolder.onchange = () => {
+  if (inputLufopFolder.files && inputLufopFolder.files.length > 0) {
+    processImportFiles(Array.from(inputLufopFolder.files));
+    inputLufopFolder.value = '';
   }
 };
 
