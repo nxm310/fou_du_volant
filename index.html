@@ -1935,26 +1935,32 @@ function getGoogleDriveDownloadUrls(inputUrl) {
 }
 
 async function fetchWithCORS(targetUrl) {
-  const candidates = [
-    targetUrl,
-    'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl)
+  // 1. Direct fetch with redirect follow (Native support for Google Apps Script, Google Sheets, Dropbox, GitHub)
+  try {
+    const res = await fetch(targetUrl, { redirect: 'follow', cache: 'no-cache' });
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.trim().length > 5) {
+        return text;
+      }
+    }
+  } catch (directErr) {
+    console.warn('Direct fetch attempt failed, trying proxies...', directErr);
+  }
+
+  // 2. Proxy Fallbacks if direct fetch is blocked by CORS
+  const proxyCandidates = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(targetUrl)
   ];
 
   let lastErr = null;
-  for (const url of candidates) {
+  for (const url of proxyCandidates) {
     try {
       const res = await fetch(url, { cache: 'no-cache' });
       if (res.ok) {
         const text = await res.text();
-        if (text.includes('id="uc-download-link"') || text.includes('action="https://drive.google.com/uc?export=download')) {
-          const m = text.match(/href="(\/uc\?export=download[^"]+)"/) || text.match(/action="([^"]+)"/);
-          if (m) {
-            const confirmUrl = 'https://drive.google.com' + m[1].replace(/&amp;/g, '&');
-            return await fetchWithCORS(confirmUrl);
-          }
-        }
-        if (text && text.trim().length > 10) {
+        if (text && !text.includes('quota has been exceeded') && text.trim().length > 5) {
           return text;
         }
       }
@@ -1962,7 +1968,8 @@ async function fetchWithCORS(targetUrl) {
       lastErr = err;
     }
   }
-  throw lastErr || new Error('Impossible de télécharger le fichier Google Drive');
+
+  throw lastErr || new Error('Impossible de récupérer les données depuis ce lien. Vérifiez les autorisations du script ou du fichier.');
 }
 
 function parseGenericRadarData(text) {
