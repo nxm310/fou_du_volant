@@ -686,23 +686,37 @@ if (!window.JSZip) {
       <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Fichiers ZIP, KML, ASC, CSV, GPX ou TXT</div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
-      <button class="btn secondary" id="btnPickFiles" style="padding:10px 6px; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:5px;">
-        📦 <span>Fichiers / ZIP</span>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin-top:10px;">
+      <button class="btn secondary" id="btnPickFiles" style="padding:10px 4px; font-size:11px; font-weight:600; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;">
+        <span style="font-size:16px;">📦</span> <span>Fichiers/ZIP</span>
       </button>
-      <button class="btn secondary" id="btnPickFolder" style="padding:10px 6px; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:5px;">
-        📂 <span>Dossier complet</span>
+      <button class="btn secondary" id="btnPasteClipboard" style="padding:10px 4px; font-size:11px; font-weight:600; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-color: rgba(10,132,255,0.4); background: rgba(10,132,255,0.1);">
+        <span style="font-size:16px;">📋</span> <span>Coller</span>
+      </button>
+      <button class="btn secondary" id="btnPickFolder" style="padding:10px 4px; font-size:11px; font-weight:600; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;">
+        <span style="font-size:16px;">📂</span> <span>Dossier PC</span>
       </button>
     </div>
 
     <input type="file" id="inputLufopFile" accept=".zip,application/zip,application/x-zip-compressed,.kml,.asc,.csv,.gpx,.txt,.xml,text/plain,*/*" multiple style="display:none;">
     <input type="file" id="inputLufopFolder" webkitdirectory directory multiple style="display:none;">
 
+    <!-- Manual Text Paste Zone -->
+    <div style="margin-top:10px;">
+      <button class="btn secondary" id="btnTogglePasteText" style="padding:8px 10px; font-size:12px; width:100%; border:1px solid rgba(255,255,255,0.12); color:var(--text-dim); cursor:pointer;">
+        📝 Ou coller du texte brut (ASC / CSV / KML) ▾
+      </button>
+      <div id="pasteTextZone" style="display:none; margin-top:8px;">
+        <textarea id="txtPasteContent" placeholder="Collez ici les lignes d'un fichier .asc, .csv, ou .kml (ex: 2.3456, 48.8566, Radar Chantier 80)" style="width:100%; height:90px; background:#18181c; border:1px solid var(--border); border-radius:10px; color:#fff; font-size:12px; padding:8px; resize:vertical; font-family:monospace; box-sizing:border-box;"></textarea>
+        <button class="btn" id="btnImportPastedText" style="margin-top:6px; padding:9px; font-size:13px; font-weight:700;">📥 Importer ce contenu</button>
+      </div>
+    </div>
+
     <!-- iPhone Guide Callout -->
     <div style="background:rgba(10,132,255,0.08); border:1px solid rgba(10,132,255,0.25); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:12px; line-height:1.45; text-align:left;">
-      <strong style="color:var(--accent); display:flex; align-items:center; gap:4px; margin-bottom:4px;">📱 Astuce iPhone / iPad :</strong>
-      • <strong>Méthode 1 (Idéale) :</strong> Touchez <em>Fichiers / ZIP</em> et choisissez directement le fichier <strong>.zip</strong> téléchargé (sans le décompresser).<br>
-      • <strong>Méthode 2 (Si déjà décompressé) :</strong> Entrez dans le dossier, touchez les <strong>« ... »</strong> ou <strong>« Sélectionner »</strong> en haut à droite &gt; <strong>« Tout sélectionner »</strong> &gt; <strong>« Ouvrir »</strong>.
+      <strong style="color:var(--accent); display:flex; align-items:center; gap:4px; margin-bottom:4px;">📱 Sur iPhone / iPad :</strong>
+      • <strong>Option A (Le plus rapide) :</strong> Ouvrez le dossier dans Fichiers iOS &gt; Touchez <strong>« ... »</strong> en haut &gt; <strong>« Sélectionner »</strong> &gt; <strong>« Tout sélectionner »</strong> &gt; <strong>« Ouvrir »</strong>.<br>
+      • <strong>Option B (Copier/Coller) :</strong> Touchez <strong>📋 Coller</strong> après avoir copié un fichier ou son texte.
     </div>
 
     <div id="lufopImportStatus" style="font-size:12px; color:var(--success); font-weight:700; margin-top:10px; display:none; background:rgba(48,209,88,0.1); border:1px solid rgba(48,209,88,0.3); border-radius:10px; padding:8px 12px;"></div>
@@ -1864,11 +1878,123 @@ const inputLufopFile = document.getElementById('inputLufopFile');
 const inputLufopFolder = document.getElementById('inputLufopFolder');
 const btnPickFiles = document.getElementById('btnPickFiles');
 const btnPickFolder = document.getElementById('btnPickFolder');
+const btnPasteClipboard = document.getElementById('btnPasteClipboard');
+const btnTogglePasteText = document.getElementById('btnTogglePasteText');
+const pasteTextZone = document.getElementById('pasteTextZone');
+const txtPasteContent = document.getElementById('txtPasteContent');
+const btnImportPastedText = document.getElementById('btnImportPastedText');
 const lufopStatusEl = document.getElementById('lufopImportStatus');
 
 dropZoneLufop.onclick = () => inputLufopFile.click();
 if (btnPickFiles) btnPickFiles.onclick = () => inputLufopFile.click();
 if (btnPickFolder) btnPickFolder.onclick = () => inputLufopFolder.click();
+
+// Paste from Clipboard Button
+if (btnPasteClipboard) {
+  btnPasteClipboard.onclick = async () => {
+    setLoader('Lecture du presse-papiers…');
+    try {
+      let imported = false;
+
+      // 1. Try reading clipboard files / blobs
+      if (navigator.clipboard && navigator.clipboard.read) {
+        try {
+          const items = await navigator.clipboard.read();
+          const files = [];
+          for (const item of items) {
+            for (const type of item.types) {
+              if (type.startsWith('image/')) continue;
+              const blob = await item.getType(type);
+              if (type.includes('zip')) {
+                files.push(new File([blob], 'clipboard.zip', { type }));
+              } else {
+                const text = await blob.text();
+                if (text && text.trim().length > 3) {
+                  files.push(new File([blob], 'clipboard.txt', { type: 'text/plain' }));
+                }
+              }
+            }
+          }
+          if (files.length > 0) {
+            await processImportFiles(files);
+            imported = true;
+          }
+        } catch (e) {
+          console.warn('clipboard.read fallback to readText:', e);
+        }
+      }
+
+      // 2. Try reading clipboard text
+      if (!imported && navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim().length > 0) {
+          const parsed = parseRadarContent(text, 'clipboard.txt');
+          if (parsed.length > 0) {
+            const file = new File([text], 'clipboard.txt', { type: 'text/plain' });
+            await processImportFiles([file]);
+            imported = true;
+          } else {
+            hideLoader();
+            toast('Le texte copié ne semble pas contenir de radars reconnus.');
+            return;
+          }
+        }
+      }
+
+      if (!imported) {
+        hideLoader();
+        toast('Presse-papiers vide ou non accessible. Utilisez le bouton "Coller du texte brut" ci-dessous.');
+      }
+    } catch (err) {
+      hideLoader();
+      toast('Presse-papiers non accessible directement. Utilisez le bouton "Coller du texte brut".');
+    }
+  };
+}
+
+// Toggle and handle manual text paste zone
+if (btnTogglePasteText && pasteTextZone) {
+  btnTogglePasteText.onclick = () => {
+    const isHidden = pasteTextZone.style.display === 'none';
+    pasteTextZone.style.display = isHidden ? 'block' : 'none';
+    btnTogglePasteText.textContent = isHidden ? '📝 Masquer la zone de texte ▴' : '📝 Ou coller du texte brut (ASC / CSV / KML) ▾';
+    if (isHidden && txtPasteContent) txtPasteContent.focus();
+  };
+}
+
+if (btnImportPastedText && txtPasteContent) {
+  btnImportPastedText.onclick = async () => {
+    const val = txtPasteContent.value.trim();
+    if (!val) {
+      toast('Veuillez d\'abord coller du texte dans la zone.');
+      return;
+    }
+    const file = new File([val], 'pasted_radars.txt', { type: 'text/plain' });
+    await processImportFiles([file]);
+    txtPasteContent.value = '';
+  };
+}
+
+// Global Paste Event Listener
+window.addEventListener('paste', async (e) => {
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+    if (target.id !== 'txtPasteContent') return;
+  }
+  if (e.clipboardData) {
+    const files = [];
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      for (const f of e.clipboardData.files) files.push(f);
+    }
+    const text = e.clipboardData.getData('text');
+    if (text && text.trim() && files.length === 0) {
+      files.push(new File([text], 'clipboard_paste.txt', { type: 'text/plain' }));
+    }
+    if (files.length > 0) {
+      processImportFiles(files);
+    }
+  }
+});
 
 dropZoneLufop.ondragover = (e) => { e.preventDefault(); dropZoneLufop.style.background = 'rgba(10,132,255,0.12)'; };
 dropZoneLufop.ondragleave = () => { dropZoneLufop.style.background = 'rgba(255,255,255,0.03)'; };
