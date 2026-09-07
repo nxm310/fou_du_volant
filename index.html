@@ -1143,12 +1143,96 @@ map.on('touchstart', (e) => { if (e.originalEvent && e.originalEvent.touches.len
 map.on('mouseup touchend mousemove touchmove dragstart zoomstart', cancelTap);
 
 // ============================================================
+//  INDEXEDDB HIGH-CAPACITY STORAGE (Bypasses localStorage 5MB quota)
+// ============================================================
+const DB_NAME = 'FouDuVolantDB';
+const DB_STORE = 'radars_cache';
+
+function getDB() {
+  return new Promise((resolve) => {
+    if (!window.indexedDB) return resolve(null);
+    try {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) {
+          db.createObjectStore(DB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function saveRadarsToCache(radars) {
+  try {
+    const db = await getDB();
+    if (db) {
+      await new Promise((resolve) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put({ time: Date.now(), data: radars }, 'radars_full');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn('IndexedDB write error:', e);
+  }
+
+  // Fallback: localStorage with safety catch
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: radars.slice(0, 3000) }));
+  } catch (e) {
+    // Quota exceeded: ignore safely without crashing
+  }
+}
+
+async function loadRadarsFromCache() {
+  try {
+    const db = await getDB();
+    if (db) {
+      const cached = await new Promise((resolve) => {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get('radars_full');
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+      if (cached && cached.data && cached.data.length > 50) {
+        return cached;
+      }
+    }
+  } catch (e) {}
+
+  // Fallback: localStorage
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+}
+
+async function clearRadarsCache() {
+  try {
+    const db = await getDB();
+    if (db) {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).clear();
+    }
+  } catch (e) {}
+  try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+}
+
+// ============================================================
 //  DATA LOADING
 // ============================================================
 async function loadRadars(forceRefresh = false) {
   if (!forceRefresh) {
     try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      const cached = await loadRadarsFromCache();
       if (cached && Date.now() - cached.time < CACHE_TTL && cached.data?.length > 100) {
         STATE.radars = cached.data;
         return { source: 'cache', date: cached.time };
@@ -1162,7 +1246,7 @@ async function loadRadars(forceRefresh = false) {
         const json = await r.json();
         if (json.radars && json.radars.length > 500) {
           STATE.radars = json.radars;
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: json.radars }));
+          await saveRadarsToCache(json.radars);
           return { source: 'local', date: Date.now() };
         }
       }
@@ -1182,7 +1266,7 @@ async function loadRadars(forceRefresh = false) {
       const data = parseCSV(text);
       if (data.length < 100) throw new Error('Données incomplètes');
       STATE.radars = data;
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data }));
+      await saveRadarsToCache(data);
       return { source: 'network', date: Date.now() };
     } catch (e) { lastErr = e; }
   }
@@ -2329,7 +2413,7 @@ async function syncGoogleDrive(isUserTriggered = false) {
 
     STATE.settings.gdriveLastSync = Date.now();
     saveSettings();
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: STATE.radars }));
+    await saveRadarsToCache(STATE.radars);
 
     renderMarkers();
     updateStats(Date.now());
@@ -2450,7 +2534,7 @@ document.getElementById('btnForceUpdateApp').onclick = async () => {
       const keys = await caches.keys();
       await Promise.all(keys.map(k => caches.delete(k)));
     }
-    localStorage.removeItem(CACHE_KEY);
+    await clearRadarsCache();
     if (swRegistration) {
       await swRegistration.update();
     }
