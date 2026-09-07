@@ -1,6 +1,6 @@
-# 🚨 Fou du Volant — Radars France (PWA v2.2)
+# 🚨 Fou du Volant — Radars France (PWA v2.4)
 
-Carte interactive et assistant d'aide à la conduite des **radars automatiques et communautaires en France** avec alertes de proximité, **synthèse vocale mains-libres**, **détection de survitesse**, mode voiture tête-haute (HUD OLED), détection d'axe en direct et import des bases **Lufop.net**.
+Carte interactive et assistant d'aide à la conduite des **radars automatiques et communautaires en France** avec alertes de proximité, **synthèse vocale mains-libres**, **détection de survitesse**, mode voiture tête-haute (HUD OLED), détection d'axe en direct, gestion automatique du cache et import complet des bases **Lufop.net (ZIP, KML, ASC, GPX, CSV)**.
 
 ---
 
@@ -19,13 +19,11 @@ Carte interactive et assistant d'aide à la conduite des **radars automatiques e
 
 ---
 
-### 📁 Support & Import des bases Lufop.net
-- **Liens directs intégrés** dans l'application pour télécharger les packs officiels Lufop :
-  - 📥 *Radars mobiles fréquents* (CSV / GPX)
-  - 📥 *Radars fixes & tourelles* (CSV / GPX)
-  - 📥 *Pack complet France*
-- **Import 1-clic dans l'application** : Glissez-déposez n'importe quel fichier CSV, ASC ou GPX issu de Lufop directement dans le panneau *Réglages* pour l'intégrer à votre carte !
-- **Script de fusion local** : Placez vos fichiers dans le dossier `data/lufop/` et lancez `python scripts/update_radars.py` pour régénérer la base `radars.json`.
+### 📦 Import Direct Universel Lufop (ZIP, KML, ASC, Dossiers, GPX, CSV)
+- **Support des archives ZIP directes** : Glissez simplement le fichier `.zip` téléchargé sur Lufop, l'application l'extrait et l'analyse instantanément en mémoire.
+- **Support du format KML (Google Earth / XML)** et **GPX**.
+- **Support des fichiers ASC et dossiers complets** : Déposez un dossier entier ou plusieurs fichiers ASC à la fois.
+- **Liens de téléchargement directs intégrés** dans l'application pour récupérer les packs officiels Lufop en 1 clic.
 
 ---
 
@@ -47,35 +45,9 @@ Carte interactive et assistant d'aide à la conduite des **radars automatiques e
 
 ---
 
-### 👥 Communauté en temps réel (Supabase)
-- **Mode Hybride** : Fonctionne en mode local immédiat (stockage navigateur) ou synchronisé en temps réel avec Supabase.
-- **Bouton 🚨 Signaler en 1 tap** (carte et mode voiture) pour déclarer :
-  - 🚓 Radar mobile
-  - 👮 Contrôle routier / FDO
-  - 🚙 Voiture-radar privatisée
-  - 🚧 Radar chantier / travaux
-  - ⚠️ Zone de danger / accident
-- Votes 👍 / 👎 sur les signalements communautaires.
-
----
-
-## 🚀 Installation & Déploiement
-
-### Étape 1 — Cloner le projet
-```bash
-git clone https://github.com/nxm310/fou_du_volant.git
-cd fou_du_volant
-```
-
-### Étape 2 — Mettre à jour la base des radars
-```bash
-python scripts/update_radars.py
-```
-
-### Étape 3 — Configurer Supabase (Optionnel)
-1. Créez un projet gratuit sur [supabase.com](https://supabase.com).
-2. Dans le **SQL Editor**, exécutez le script [`supabase-setup.sql`](file:///e:/antigravity/pc/fou%20du%20voant/supabase-setup.sql).
-3. Renseignez votre URL de projet et clé `anon` dans l'application via le panneau **Réglages** $\rightarrow$ section *Communauté*.
+### 🔄 Mises à Jour Automatiques & PWA
+- **Stratégie Network-First** : Vos mises à jour GitHub Pages sont appliquées automatiquement dès l'ouverture de l'application.
+- **Bouton "Forcer la mise à jour"** dans les réglages pour vider le cache en 1 clic.
 
 ---
 
@@ -83,10 +55,3 @@ python scripts/update_radars.py
 
 - **iOS (Safari)** : Bouton Partager $\rightarrow$ **Sur l'écran d'accueil**.
 - **Android (Chrome)** : Menu $\rightarrow$ **Installer l'application**.
-
----
-
-## 📊 Sources & Licences
-- **Données officielles** : Ministère de l'Intérieur / [data.gouv.fr](https://www.data.gouv.fr/datasets/radars-automatiques) (Licence Ouverte 2.0).
-- **Données communautaires** : [Lufop.net](https://lufop.net/).
-- **Cartographie** : [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL).

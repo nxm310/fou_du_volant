@@ -13,6 +13,12 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+if (!window.JSZip) {
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"><\/script>');
+}
+</script>
 <style>
   :root {
     --bg: #000000;
@@ -694,13 +700,13 @@
       <a href="https://lufop.net/telechargement-radars-gratuits/" target="_blank" rel="noopener" style="color:var(--accent); text-decoration:none; font-size:13px; display:flex; align-items:center; gap:6px;">📥 Pack complet France (Tous radars) ↗</a>
     </div>
 
-    <div style="border: 2px dashed rgba(255,255,255,0.18); border-radius:12px; padding:16px 10px; text-align:center; cursor:pointer; background:rgba(255,255,255,0.02); transition:background 0.2s;" id="dropZoneLufop">
-      <div style="font-size:26px; margin-bottom:4px;">📂</div>
-      <div style="font-size:13px; font-weight:700;">Glissez un fichier CSV / GPX / ASC</div>
-      <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">ou cliquez pour parcourir vos fichiers</div>
-      <input type="file" id="inputLufopFile" accept=".csv,.asc,.gpx,.kml,.txt" multiple style="display:none;">
+    <div style="border: 2px dashed rgba(255,255,255,0.22); border-radius:14px; padding:18px 12px; text-align:center; cursor:pointer; background:rgba(255,255,255,0.03); transition:all 0.2s;" id="dropZoneLufop">
+      <div style="font-size:30px; margin-bottom:6px;">📦</div>
+      <div style="font-size:14px; font-weight:700;">Glissez un fichier ZIP, dossier, KML, ASC, CSV ou GPX</div>
+      <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Lit directement les archives .zip et dossiers complets</div>
+      <input type="file" id="inputLufopFile" accept=".zip,.kml,.asc,.csv,.gpx,.txt,.xml" multiple style="display:none;">
     </div>
-    <div id="lufopImportStatus" style="font-size:12px; color:var(--success); font-weight:600; margin-top:8px; display:none;"></div>
+    <div id="lufopImportStatus" style="font-size:12px; color:var(--success); font-weight:700; margin-top:10px; display:none; background:rgba(48,209,88,0.1); border:1px solid rgba(48,209,88,0.3); border-radius:10px; padding:8px 12px;"></div>
   </div>
 
   <h3>Données & Application</h3>
@@ -1811,126 +1817,252 @@ document.getElementById('btnSaveSupabase').onclick = () => {
   toast('Paramètres Supabase mis à jour');
 };
 
-// Lufop / Custom File Import
+// Lufop / Multi-format File & ZIP Import
 const dropZoneLufop = document.getElementById('dropZoneLufop');
 const inputLufopFile = document.getElementById('inputLufopFile');
 const lufopStatusEl = document.getElementById('lufopImportStatus');
 
 dropZoneLufop.onclick = () => inputLufopFile.click();
-dropZoneLufop.ondragover = (e) => { e.preventDefault(); dropZoneLufop.style.background = 'rgba(10,132,255,0.1)'; };
-dropZoneLufop.ondragleave = () => { dropZoneLufop.style.background = 'rgba(255,255,255,0.02)'; };
-dropZoneLufop.ondrop = (e) => {
+dropZoneLufop.ondragover = (e) => { e.preventDefault(); dropZoneLufop.style.background = 'rgba(10,132,255,0.12)'; };
+dropZoneLufop.ondragleave = () => { dropZoneLufop.style.background = 'rgba(255,255,255,0.03)'; };
+dropZoneLufop.ondrop = async (e) => {
   e.preventDefault();
-  dropZoneLufop.style.background = 'rgba(255,255,255,0.02)';
-  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-    handleLufopFiles(e.dataTransfer.files);
+  dropZoneLufop.style.background = 'rgba(255,255,255,0.03)';
+  const files = await extractFilesFromDataTransfer(e.dataTransfer);
+  if (files.length > 0) {
+    processImportFiles(files);
   }
 };
 inputLufopFile.onchange = () => {
   if (inputLufopFile.files && inputLufopFile.files.length > 0) {
-    handleLufopFiles(inputLufopFile.files);
+    processImportFiles(Array.from(inputLufopFile.files));
   }
 };
 
-function parseLufopText(text, filename = '') {
+async function extractFilesFromDataTransfer(dataTransfer) {
+  const files = [];
+  const items = dataTransfer.items;
+  if (!items || items.length === 0) return Array.from(dataTransfer.files || []);
+
+  async function traverseEntry(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+      files.push(file);
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      const readBatch = () => new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+      let entries = await readBatch();
+      while (entries.length > 0) {
+        for (const child of entries) {
+          await traverseEntry(child);
+        }
+        entries = await readBatch();
+      }
+    }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) {
+      await traverseEntry(entry);
+    } else if (item.kind === 'file') {
+      const f = item.getAsFile();
+      if (f) files.push(f);
+    }
+  }
+  return files.length > 0 ? files : Array.from(dataTransfer.files || []);
+}
+
+function parseRadarContent(text, filename = '') {
   const radars = [];
+  const fLower = filename.toLowerCase();
+
+  // 1. KML XML Parsing
+  if (text.includes('<kml') || fLower.endsWith('.kml')) {
+    const placemarkRegex = /<Placemark\b[^>]*>([\s\S]*?)<\/Placemark>/gi;
+    let pmMatch;
+    while ((pmMatch = placemarkRegex.exec(text)) !== null) {
+      const pmContent = pmMatch[1];
+      const nameM = /<name\b[^>]*>([\s\S]*?)<\/name>/i.exec(pmContent);
+      const descM = /<description\b[^>]*>([\s\S]*?)<\/description>/i.exec(pmContent);
+      const coordM = /<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/i.exec(pmContent);
+
+      const name = nameM ? nameM[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim() : '';
+      const desc = descM ? descM[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim() : '';
+      const fullText = `${name} ${desc}`.trim();
+
+      if (coordM) {
+        const rawCoords = coordM[1].trim().split(/[\s,]+/);
+        if (rawCoords.length >= 2) {
+          const lng = parseFloat(rawCoords[0]);
+          const lat = parseFloat(rawCoords[1]);
+          if (!isNaN(lat) && !isNaN(lng) && lat >= 40 && lat <= 54) {
+            radars.push(buildRadarItem(lat, lng, fullText, fLower));
+          }
+        }
+      }
+    }
+    return radars;
+  }
+
+  // 2. GPX XML Parsing
+  if (text.includes('<gpx') || text.includes('<wpt') || fLower.endsWith('.gpx')) {
+    const wptRegex = /<wpt\b[^>]*lat="([-\d\.]+)"[^>]*lon="([-\d\.]+)"[^>]*>([\s\S]*?)<\/wpt>/gi;
+    let wptMatch;
+    while ((wptMatch = wptRegex.exec(text)) !== null) {
+      const lat = parseFloat(wptMatch[1]);
+      const lng = parseFloat(wptMatch[2]);
+      const inner = wptMatch[3];
+      const nameM = /<name\b[^>]*>([\s\S]*?)<\/name>/i.exec(inner);
+      const descM = /<desc\b[^>]*>([\s\S]*?)<\/desc>/i.exec(inner);
+      const fullText = `${nameM ? nameM[1] : ''} ${descM ? descM[1] : ''}`.trim();
+      if (!isNaN(lat) && !isNaN(lng) && lat >= 40 && lat <= 54) {
+        radars.push(buildRadarItem(lat, lng, fullText, fLower));
+      }
+    }
+    return radars;
+  }
+
+  // 3. ASC / CSV / TXT Delimited Parsing
   const lines = text.split(/\r?\n/);
   for (let line of lines) {
     line = line.trim();
-    if (!line || line.startsWith('#')) continue;
+    if (!line || line.startsWith('#') || line.toLowerCase().startsWith('latitude') || line.toLowerCase().startsWith('longitude')) continue;
 
-    // GPX format
-    if (line.includes('<wpt')) {
-      const latM = line.match(/lat="([-\d\.]+)"/);
-      const lonM = line.match(/lon="([-\d\.]+)"/);
-      if (latM && lonM) {
-        const lat = parseFloat(latM[1]);
-        const lng = parseFloat(lonM[1]);
-        if (!isNaN(lat) && !isNaN(lng) && lat >= 40 && lat <= 53) {
-          radars.push({
-            id: 'lufop_' + Math.random().toString(36).slice(2, 9),
-            lat: Math.round(lat * 1e6) / 1e6,
-            lng: Math.round(lng * 1e6) / 1e6,
-            type: filename.toLowerCase().includes('mobile') ? 'Radar mobile' : 'Radar fixe',
-            category: filename.toLowerCase().includes('mobile') ? 'mobile' : 'fixe',
-            icon: filename.toLowerCase().includes('mobile') ? '🚓' : '📷',
-            vitesse: null, emplacement: 'Lufop GPX', community: true, source: 'lufop'
-          });
-        }
-      }
-      continue;
-    }
+    // Replace French decimal comma if present inside numeric fields
+    let normalized = line.replace(/(\d+),(\d{4,})/g, '$1.$2');
 
-    // CSV / ASC format (lon, lat, "desc")
-    const m = line.match(/^([-\d\.]+)[,\s;]+([-\d\.]+)[,\s;]+"?([^"]*)"?$/);
+    // Match lon, lat, [optional description/speed]
+    const m = normalized.match(/^([-\d\.]+)[,\s;|\t]+([-\d\.]+)(?:[,\s;|\t]+"?([^"\r\n]*)"?)?$/);
     if (m) {
       const val1 = parseFloat(m[1]);
       const val2 = parseFloat(m[2]);
       const desc = (m[3] || '').trim();
 
       let lat, lng;
-      if (val1 >= 40 && val1 <= 53) { lat = val1; lng = val2; }
+      if (val1 >= 40 && val1 <= 54) { lat = val1; lng = val2; }
       else { lat = val2; lng = val1; }
 
-      if (isNaN(lat) || isNaN(lng) || lat < 40 || lat > 53) continue;
-
-      const dLower = (desc + ' ' + filename).toLowerCase();
-      let rType = 'Radar fixe', rIcon = '📷', rCat = 'fixe';
-      if (dLower.includes('rm') || dLower.includes('mobile')) { rType = 'Radar mobile'; rIcon = '🚓'; rCat = 'mobile'; }
-      else if (dLower.includes('rc') || dLower.includes('chantier') || dLower.includes('temporaire')) { rType = 'Radar autonome / chantier'; rIcon = '🚧'; rCat = 'chantier'; }
-      else if (dLower.includes('fr') || dLower.includes('feu')) { rType = 'Radar feu rouge'; rIcon = '🚦'; rCat = 'feu'; }
-      else if (dLower.includes('rt') || dLower.includes('troncon')) { rType = 'Radar tronçon'; rIcon = '⏱️'; rCat = 'troncon'; }
-      else if (dLower.includes('rd') || dLower.includes('discriminant')) { rType = 'Radar discriminant'; rIcon = '🚛'; rCat = 'discriminant'; }
-
-      const spM = desc.match(/\b(30|50|70|80|90|110|130)\b/);
-      const speed = spM ? parseInt(spM[1]) : null;
-
-      radars.push({
-        id: 'lufop_' + Math.random().toString(36).slice(2, 9),
-        lat: Math.round(lat * 1e6) / 1e6,
-        lng: Math.round(lng * 1e6) / 1e6,
-        type: rType,
-        category: rCat,
-        icon: rIcon,
-        vitesse: speed,
-        emplacement: desc || 'Import Lufop',
-        community: rCat === 'mobile' || rCat === 'chantier',
-        source: 'lufop'
-      });
+      if (isNaN(lat) || isNaN(lng) || lat < 40 || lat > 54) continue;
+      radars.push(buildRadarItem(lat, lng, desc, fLower));
     }
   }
   return radars;
 }
 
-async function handleLufopFiles(files) {
-  let totalImported = 0;
-  for (let file of files) {
-    try {
-      const text = await file.text();
-      const parsed = parseLufopText(text, file.name);
-      if (parsed.length > 0) {
-        // Dédoublonnage par rapport aux radars existants
-        const seen = new Set();
-        STATE.radars.forEach(r => seen.add(`${r.lat.toFixed(3)}_${r.lng.toFixed(3)}`));
-        
-        const newRadars = parsed.filter(r => !seen.has(`${r.lat.toFixed(3)}_${r.lng.toFixed(3)}`));
-        STATE.radars.push(...newRadars);
-        totalImported += newRadars.length;
-      }
-    } catch (e) { console.error('Import error:', e); }
+function buildRadarItem(lat, lng, desc, filename = '') {
+  const combined = `${desc} ${filename}`.toLowerCase();
+  let rType = 'Radar fixe', rIcon = '📷', rCat = 'fixe';
+
+  if (combined.includes('mobile') || combined.includes('rm') || combined.includes('mob')) {
+    rType = 'Radar mobile'; rIcon = '🚓'; rCat = 'mobile';
+  } else if (combined.includes('chantier') || combined.includes('temporaire') || combined.includes('rc') || combined.includes('autonome')) {
+    rType = 'Radar autonome / chantier'; rIcon = '🚧'; rCat = 'chantier';
+  } else if (combined.includes('feu') || combined.includes('fr_') || combined.includes('rouge')) {
+    rType = 'Radar feu rouge'; rIcon = '🚦'; rCat = 'feu';
+  } else if (combined.includes('troncon') || combined.includes('tronçon') || combined.includes('rt_') || combined.includes('moyenne')) {
+    rType = 'Radar tronçon'; rIcon = '⏱️'; rCat = 'troncon';
+  } else if (combined.includes('discriminant') || combined.includes('rd_') || combined.includes('pl_') || combined.includes('-pl')) {
+    rType = 'Radar discriminant'; rIcon = '🚛'; rCat = 'discriminant';
+  } else if (combined.includes('tourelle') || combined.includes('fusion')) {
+    rType = 'Radar tourelle'; rIcon = '🗼'; rCat = 'tourelle';
+  } else if (combined.includes('urbain')) {
+    rType = 'Radar urbain'; rIcon = '🏙️'; rCat = 'urbain';
   }
 
+  const spM = desc.match(/\b(30|50|70|80|90|110|130)\b/);
+  const speed = spM ? parseInt(spM[1]) : null;
+
+  return {
+    id: 'lufop_' + Math.random().toString(36).slice(2, 9),
+    lat: Math.round(lat * 1e6) / 1e6,
+    lng: Math.round(lng * 1e6) / 1e6,
+    type: rType,
+    category: rCat,
+    icon: rIcon,
+    vitesse: speed,
+    emplacement: desc || 'Import Lufop',
+    community: rCat === 'mobile' || rCat === 'chantier',
+    source: 'lufop'
+  };
+}
+
+async function processImportFiles(files) {
+  setLoader('Analyse et extraction des fichiers…');
+  let totalImported = 0;
+  const breakdown = {};
+  const seen = new Set();
+  STATE.radars.forEach(r => seen.add(`${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`));
+
+  for (const file of files) {
+    const fLower = file.name.toLowerCase();
+
+    // Direct ZIP Archive Processing
+    if (fLower.endsWith('.zip') || file.type.includes('zip')) {
+      if (window.JSZip) {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          for (const zipName of Object.keys(zip.files)) {
+            const entry = zip.files[zipName];
+            if (!entry.dir && /\.(asc|csv|kml|gpx|txt|xml)$/i.test(zipName)) {
+              const text = await entry.async('text');
+              const parsed = parseRadarContent(text, zipName);
+              for (const r of parsed) {
+                const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  STATE.radars.push(r);
+                  totalImported++;
+                  breakdown[r.type] = (breakdown[r.type] || 0) + 1;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('ZIP extraction error:', e);
+        }
+      }
+      continue;
+    }
+
+    // Single File (ASC, KML, GPX, CSV, TXT)
+    if (/\.(asc|csv|kml|gpx|txt|xml)$/i.test(fLower)) {
+      try {
+        const text = await file.text();
+        const parsed = parseRadarContent(text, file.name);
+        for (const r of parsed) {
+          const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            STATE.radars.push(r);
+            totalImported++;
+            breakdown[r.type] = (breakdown[r.type] || 0) + 1;
+          }
+        }
+      } catch (e) {
+        console.error('File read error:', e);
+      }
+    }
+  }
+
+  hideLoader();
+
   if (totalImported > 0) {
-    // Save to cache
     localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: STATE.radars }));
     renderMarkers();
     updateStats(Date.now());
+    
+    const details = Object.entries(breakdown).map(([k, v]) => `${v} ${k}`).join(', ');
     lufopStatusEl.style.display = 'block';
-    lufopStatusEl.textContent = `✅ ${totalImported} radar(s) Lufop importé(s) avec succès !`;
-    toast(`${totalImported} radar(s) importé(s) !`);
+    lufopStatusEl.innerHTML = `✅ <strong>${totalImported} nouveau(x) radar(s) importé(s) !</strong><br><span style="font-size:11px; color:var(--text-sub);">${details}</span>`;
+    toast(`✅ ${totalImported} radar(s) importé(s) avec succès !`);
     speakAlert(`Importation réussie de ${totalImported} radars`);
   } else {
-    toast('Aucun nouveau radar détecté dans les fichiers.');
+    lufopStatusEl.style.display = 'block';
+    lufopStatusEl.style.color = 'var(--warning)';
+    lufopStatusEl.textContent = `ℹ️ Aucun nouveau radar : les points étaient déjà dans votre base.`;
+    toast('Aucun nouveau radar (déjà présents dans la base)');
   }
 }
 

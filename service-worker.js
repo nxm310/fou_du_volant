@@ -1,5 +1,5 @@
 // Service worker - Radars France PWA (Auto-Update Engine)
-const VERSION = 'v2.3.0';
+const VERSION = 'v2.4.0';
 const SHELL_CACHE = `shell-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
@@ -12,11 +12,12 @@ const SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'
 ];
 
 self.addEventListener('install', (e) => {
-  self.skipWaiting(); // Force activation immédiate
+  self.skipWaiting();
   e.waitUntil(
     caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL).catch(() => {}))
   );
@@ -43,7 +44,6 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
 
   // 1. Navigation / HTML & Config : Network-First avec Fallback Cache
-  // Garantit que les mises à jour GitHub Pages sont reçues immédiatement à l'ouverture
   if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('config.js') || url.pathname === '/' || url.pathname.endsWith('/fou_du_volant/')) {
     e.respondWith(
       fetch(req).then((res) => {
@@ -72,11 +72,11 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 3. Fichiers statiques et librairies (radars.json, images, leaflet, supabase) : Stale-While-Revalidate
+  // 3. Fichiers statiques et librairies : Stale-While-Revalidate
   e.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req).then((res) => {
-        if (res.ok && (url.origin === location.origin || url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net')) {
+        if (res.ok && (url.origin === location.origin || url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'cdnjs.cloudflare.com')) {
           const clone = res.clone();
           caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
         }
