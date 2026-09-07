@@ -653,15 +653,17 @@ if (!window.JSZip) {
     <label class="switch"><input type="checkbox" id="swWakeLock" checked><span class="slider-sw"></span></label>
   </div>
 
-  <h3>Types de radars officiels</h3>
+  <h3>Types de radars & Alertes</h3>
+  <div class="row"><label>🚧 Radars autonomes / chantier</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar autonome / chantier" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🚓 Radars mobiles & fréquents</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar mobile" checked><span class="slider-sw"></span></label></div>
   <div class="row"><label>📷 Radars fixes classiques</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar fixe" checked><span class="slider-sw"></span></label></div>
   <div class="row"><label>🗼 Radars tourelles</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar tourelle" checked><span class="slider-sw"></span></label></div>
   <div class="row"><label>🚛 Radars discriminants (VL/PL)</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar discriminant" checked><span class="slider-sw"></span></label></div>
-  <div class="row"><label>🚧 Radars autonomes / chantier</label>
-    <label class="switch"><input type="checkbox" class="flt" data-type="Radar autonome / chantier" checked><span class="slider-sw"></span></label></div>
   <div class="row"><label>🏙️ Radars urbains</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar urbain" checked><span class="slider-sw"></span></label></div>
   <div class="row"><label>🚦 Radars feux rouges</label>
@@ -1879,7 +1881,7 @@ function parseRadarContent(text, filename = '') {
   const fLower = filename.toLowerCase();
 
   // 1. KML XML Parsing
-  if (text.includes('<kml') || fLower.endsWith('.kml')) {
+  if (text.includes('<kml') || text.includes('<Placemark') || fLower.endsWith('.kml')) {
     const placemarkRegex = /<Placemark\b[^>]*>([\s\S]*?)<\/Placemark>/gi;
     let pmMatch;
     while ((pmMatch = placemarkRegex.exec(text)) !== null) {
@@ -1903,7 +1905,7 @@ function parseRadarContent(text, filename = '') {
         }
       }
     }
-    return radars;
+    if (radars.length > 0) return radars;
   }
 
   // 2. GPX XML Parsing
@@ -1921,30 +1923,57 @@ function parseRadarContent(text, filename = '') {
         radars.push(buildRadarItem(lat, lng, fullText, fLower));
       }
     }
-    return radars;
+    if (radars.length > 0) return radars;
   }
 
-  // 3. ASC / CSV / TXT Delimited Parsing
+  // 3. ASC / CSV / TXT Delimited Parsing (Robust Multi-delimiter)
   const lines = text.split(/\r?\n/);
-  for (let line of lines) {
-    line = line.trim();
-    if (!line || line.startsWith('#') || line.toLowerCase().startsWith('latitude') || line.toLowerCase().startsWith('longitude')) continue;
+  for (let rawLine of lines) {
+    let line = rawLine.trim();
+    if (!line || line.startsWith('#') || line.startsWith('//')) continue;
+    const lLower = line.toLowerCase();
+    if (lLower.startsWith('latitude') || lLower.startsWith('longitude') || lLower.startsWith('lat,') || lLower.startsWith('lon,')) continue;
 
-    // Replace French decimal comma if present inside numeric fields
-    let normalized = line.replace(/(\d+),(\d{4,})/g, '$1.$2');
+    // Detect if decimal format is French comma (e.g. 2,34567;48,12345)
+    let normalized = line;
+    if (line.includes(';') || line.includes('\t')) {
+      normalized = line.replace(/(\d+),(\d{3,})/g, '$1.$2');
+    }
 
-    // Match lon, lat, [optional description/speed]
-    const m = normalized.match(/^([-\d\.]+)[,\s;|\t]+([-\d\.]+)(?:[,\s;|\t]+"?([^"\r\n]*)"?)?$/);
-    if (m) {
-      const val1 = parseFloat(m[1]);
-      const val2 = parseFloat(m[2]);
-      const desc = (m[3] || '').trim();
+    // Attempt splitting by comma, semicolon, tab, or space
+    // Check delimiter
+    let parts = [];
+    if (normalized.includes(';')) {
+      parts = normalized.split(';').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    } else if (normalized.includes('\t')) {
+      parts = normalized.split('\t').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    } else if (normalized.includes(',')) {
+      // CSV line parsing
+      parts = parseCSVLine(normalized).map(p => p.trim());
+    } else {
+      // Space separated: lon lat [desc...]
+      const spMatch = normalized.match(/^([-\d\.]+)\s+([-\d\.]+)(?:\s+(.*))?$/);
+      if (spMatch) {
+        parts = [spMatch[1], spMatch[2], spMatch[3] || ''];
+      }
+    }
+
+    if (parts.length >= 2) {
+      let val1 = parseFloat(parts[0]);
+      let val2 = parseFloat(parts[1]);
+
+      if (isNaN(val1) || isNaN(val2)) continue;
 
       let lat, lng;
-      if (val1 >= 40 && val1 <= 54) { lat = val1; lng = val2; }
-      else { lat = val2; lng = val1; }
+      if (val1 >= 40 && val1 <= 54 && val2 >= -6 && val2 <= 11) {
+        lat = val1; lng = val2;
+      } else if (val2 >= 40 && val2 <= 54 && val1 >= -6 && val1 <= 11) {
+        lat = val2; lng = val1;
+      } else {
+        continue;
+      }
 
-      if (isNaN(lat) || isNaN(lng) || lat < 40 || lat > 54) continue;
+      const desc = parts.slice(2).join(' — ').trim();
       radars.push(buildRadarItem(lat, lng, desc, fLower));
     }
   }
@@ -1955,11 +1984,11 @@ function buildRadarItem(lat, lng, desc, filename = '') {
   const combined = `${desc} ${filename}`.toLowerCase();
   let rType = 'Radar fixe', rIcon = '📷', rCat = 'fixe';
 
-  if (combined.includes('mobile') || combined.includes('rm') || combined.includes('mob')) {
-    rType = 'Radar mobile'; rIcon = '🚓'; rCat = 'mobile';
-  } else if (combined.includes('chantier') || combined.includes('temporaire') || combined.includes('rc') || combined.includes('autonome')) {
+  if (combined.includes('chantier') || combined.includes('temporaire') || combined.includes('autonome') || combined.includes('rc_') || combined.includes('radars_chantier') || combined.includes('radar_chantier') || combined.includes('chantier_') || combined.includes('chantier.') || combined.includes('chantier ')) {
     rType = 'Radar autonome / chantier'; rIcon = '🚧'; rCat = 'chantier';
-  } else if (combined.includes('feu') || combined.includes('fr_') || combined.includes('rouge')) {
+  } else if (combined.includes('mobile') || combined.includes('rm_') || combined.includes('radars_mobiles') || combined.includes('radar_mobile') || combined.includes('mobiles') || combined.includes('mob.') || combined.includes('mob ')) {
+    rType = 'Radar mobile'; rIcon = '🚓'; rCat = 'mobile';
+  } else if (combined.includes('feu') || combined.includes('fr_') || combined.includes('rouge') || combined.includes('feu_rouge')) {
     rType = 'Radar feu rouge'; rIcon = '🚦'; rCat = 'feu';
   } else if (combined.includes('troncon') || combined.includes('tronçon') || combined.includes('rt_') || combined.includes('moyenne')) {
     rType = 'Radar tronçon'; rIcon = '⏱️'; rCat = 'troncon';
@@ -1982,7 +2011,7 @@ function buildRadarItem(lat, lng, desc, filename = '') {
     category: rCat,
     icon: rIcon,
     vitesse: speed,
-    emplacement: desc || 'Import Lufop',
+    emplacement: desc || 'Import Lufop / Fichier GPS',
     community: rCat === 'mobile' || rCat === 'chantier',
     source: 'lufop'
   };
@@ -1992,8 +2021,13 @@ async function processImportFiles(files) {
   setLoader('Analyse et extraction des fichiers…');
   let totalImported = 0;
   const breakdown = {};
-  const seen = new Set();
-  STATE.radars.forEach(r => seen.add(`${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`));
+  
+  // Existing coords index (rounded to ~11 meters: 4 decimals)
+  const seenMap = new Map();
+  STATE.radars.forEach(r => {
+    const k = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+    seenMap.set(k, r);
+  });
 
   for (const file of files) {
     const fLower = file.name.toLowerCase();
@@ -2009,10 +2043,20 @@ async function processImportFiles(files) {
               const text = await entry.async('text');
               const parsed = parseRadarContent(text, zipName);
               for (const r of parsed) {
-                const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
+                const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+                const existing = seenMap.get(key);
+                if (!existing) {
+                  seenMap.set(key, r);
                   STATE.radars.push(r);
+                  totalImported++;
+                  breakdown[r.type] = (breakdown[r.type] || 0) + 1;
+                } else if (existing.type !== r.type && (r.type.includes('chantier') || r.type.includes('mobile'))) {
+                  // Upgrade category if more specific (e.g. chantier or mobile)
+                  existing.type = r.type;
+                  existing.icon = r.icon;
+                  existing.category = r.category;
+                  existing.emplacement = r.emplacement || existing.emplacement;
+                  if (r.vitesse) existing.vitesse = r.vitesse;
                   totalImported++;
                   breakdown[r.type] = (breakdown[r.type] || 0) + 1;
                 }
@@ -2032,10 +2076,19 @@ async function processImportFiles(files) {
         const text = await file.text();
         const parsed = parseRadarContent(text, file.name);
         for (const r of parsed) {
-          const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}_${r.type}`;
-          if (!seen.has(key)) {
-            seen.add(key);
+          const key = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+          const existing = seenMap.get(key);
+          if (!existing) {
+            seenMap.set(key, r);
             STATE.radars.push(r);
+            totalImported++;
+            breakdown[r.type] = (breakdown[r.type] || 0) + 1;
+          } else if (existing.type !== r.type && (r.type.includes('chantier') || r.type.includes('mobile'))) {
+            existing.type = r.type;
+            existing.icon = r.icon;
+            existing.category = r.category;
+            existing.emplacement = r.emplacement || existing.emplacement;
+            if (r.vitesse) existing.vitesse = r.vitesse;
             totalImported++;
             breakdown[r.type] = (breakdown[r.type] || 0) + 1;
           }
@@ -2055,14 +2108,15 @@ async function processImportFiles(files) {
     
     const details = Object.entries(breakdown).map(([k, v]) => `${v} ${k}`).join(', ');
     lufopStatusEl.style.display = 'block';
-    lufopStatusEl.innerHTML = `✅ <strong>${totalImported} nouveau(x) radar(s) importé(s) !</strong><br><span style="font-size:11px; color:var(--text-sub);">${details}</span>`;
-    toast(`✅ ${totalImported} radar(s) importé(s) avec succès !`);
-    speakAlert(`Importation réussie de ${totalImported} radars`);
+    lufopStatusEl.style.color = 'var(--success)';
+    lufopStatusEl.innerHTML = `✅ <strong>${totalImported} radar(s) ajouté(s) / mis à jour !</strong><br><span style="font-size:11px; color:var(--text-sub);">${details}</span>`;
+    toast(`✅ ${totalImported} radar(s) synchronisé(s) !`);
+    speakAlert(`Importation réussie : ${totalImported} radars`);
   } else {
     lufopStatusEl.style.display = 'block';
     lufopStatusEl.style.color = 'var(--warning)';
-    lufopStatusEl.textContent = `ℹ️ Aucun nouveau radar : les points étaient déjà dans votre base.`;
-    toast('Aucun nouveau radar (déjà présents dans la base)');
+    lufopStatusEl.textContent = `ℹ️ Aucun nouveau radar : les points détectés sont déjà à jour dans votre base.`;
+    toast('Base déjà à jour pour ces fichiers');
   }
 }
 

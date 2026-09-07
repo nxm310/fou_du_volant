@@ -1,5 +1,5 @@
 // Service worker - Radars France PWA (Auto-Update Engine)
-const VERSION = 'v2.4.0';
+const VERSION = 'v2.4.1';
 const SHELL_CACHE = `shell-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
