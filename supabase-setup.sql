@@ -8,7 +8,7 @@ create table if not exists public.community_radars (
   id           bigserial primary key,
   lat          double precision not null,
   lng          double precision not null,
-  kind         text not null check (kind in ('mobile','nouveau','controle','danger')),
+  kind         text not null check (kind in ('mobile','nouveau','controle','danger','chantier','voiture_radar')),
   note         text default '',
   user_id      text not null,
   votes        integer not null default 1,
@@ -42,14 +42,11 @@ create policy "read active radars"
   on public.community_radars for select
   using (active = true);
 
--- Tout le monde peut insérer (rate limiting géré via RPC ci-dessous)
+-- Tout le monde peut insérer
 drop policy if exists "insert radars" on public.community_radars;
 create policy "insert radars"
   on public.community_radars for insert
   with check (true);
-
--- Pas de update/delete direct depuis le client : tout passe par RPC
--- (les votes et auto-expiration se font côté serveur)
 
 drop policy if exists "read votes" on public.community_votes;
 create policy "read votes"
@@ -59,21 +56,22 @@ drop policy if exists "insert votes" on public.community_votes;
 create policy "insert votes"
   on public.community_votes for insert with check (true);
 
--- 4. RPC de vote atomique (empêche les doubles votes, recalcule le compteur,
---    désactive automatiquement les radars trop downvotés)
-create or replace function public.vote_radar(radar_id bigint, delta integer)
+-- 4. RPC de vote atomique (dédupliqué avec p_user_id ou header)
+create or replace function public.vote_radar(radar_id bigint, delta integer, p_user_id text default '')
 returns void
 language plpgsql
 security definer
 as $$
 declare
   v_user text;
-  v_new_votes integer;
 begin
-  -- récupère user_id depuis le header (ou génère un id unique par requête si absent)
-  v_user := coalesce(current_setting('request.headers', true)::json->>'x-user-id', '');
-  if v_user = '' then
-    v_user := encode(gen_random_bytes(8), 'hex');
+  if p_user_id is not null and p_user_id != '' then
+    v_user := p_user_id;
+  else
+    v_user := coalesce(current_setting('request.headers', true)::json->>'x-user-id', '');
+    if v_user = '' then
+      v_user := encode(gen_random_bytes(8), 'hex');
+    end if;
   end if;
 
   -- insère le vote (ignore si déjà voté)
@@ -90,21 +88,16 @@ begin
 end;
 $$;
 
-grant execute on function public.vote_radar(bigint, integer) to anon, authenticated;
+grant execute on function public.vote_radar(bigint, integer, text) to anon, authenticated;
 
--- 5. Job d'expiration automatique : radars mobiles > 48h désactivés,
---    zones de contrôle > 24h désactivées
+-- 5. Job d'expiration automatique
 create or replace function public.expire_old_radars()
 returns void
 language sql
 as $$
   update public.community_radars set active = false
   where active = true and (
-    (kind = 'mobile' and created_at < now() - interval '48 hours') or
-    (kind = 'controle' and created_at < now() - interval '24 hours')
+    (kind in ('mobile', 'voiture_radar') and created_at < now() - interval '48 hours') or
+    (kind in ('controle', 'chantier') and created_at < now() - interval '24 hours')
   );
 $$;
-
--- Pour exécuter périodiquement, utilise l'extension pg_cron (activable dans
--- Database > Extensions) puis :
--- select cron.schedule('expire-radars', '*/30 * * * *', 'select public.expire_old_radars()');

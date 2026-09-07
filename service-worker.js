@@ -1,5 +1,5 @@
 // Service worker - Radars France PWA
-const VERSION = 'v2.0.0';
+const VERSION = 'v2.1.0';
 const SHELL_CACHE = `shell-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
@@ -7,6 +7,7 @@ const SHELL = [
   './',
   './index.html',
   './config.js',
+  './radars.json',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

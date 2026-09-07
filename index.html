@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Radars FR">
+<meta name="apple-mobile-web-app-title" content="Fou du Volant">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-<title>Radars France</title>
+<title>Fou du Volant — Radars France</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<!-- Configuration Supabase (à éditer dans config.js) -->
+<!-- Configuration Supabase -->
 <script src="./config.js"></script>
 <style>
   :root {
@@ -26,6 +26,9 @@
     --danger: #ff453a;
     --warning: #ff9f0a;
     --success: #32d74b;
+    --purple: #bf5af2;
+    --indigo: #5e5ce6;
+    --teal: #64d2ff;
     --safe-top: env(safe-area-inset-top);
     --safe-bottom: env(safe-area-inset-bottom);
   }
@@ -81,6 +84,9 @@
   .alert-bar.show { transform: translateY(0); opacity: 1; }
   .alert-bar.danger { border-color: var(--danger); background: #2a0f0e; }
   .alert-bar.warning { border-color: var(--warning); background: #2a1f0d; }
+  .alert-bar.overspeed { border-color: var(--danger); background: #3d0505; animation: flashDanger 0.8s infinite; }
+  @keyframes flashDanger { 0%,100% { box-shadow: 0 0 15px rgba(255,69,58,0.4); } 50% { box-shadow: 0 0 30px rgba(255,69,58,0.9); } }
+
   .alert-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
   .alert-subtitle { font-size: 13px; color: var(--text-dim); }
   .alert-distance { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
@@ -93,9 +99,14 @@
     display: none; flex-direction: column;
     padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 16px);
     user-select: none; -webkit-user-select: none;
+    transition: background 0.3s;
   }
   body.car-on .car-mode { display: flex; }
   body.car-on #map, body.car-on .topbar, body.car-on .alert-bar { display: none; }
+  body.car-on.car-overspeed .car-mode {
+    background: #1f0404;
+    box-shadow: inset 0 0 50px rgba(255,69,58,0.5);
+  }
 
   .car-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .car-exit { background: transparent; border: 1px solid var(--border);
@@ -110,14 +121,18 @@
     font-size: clamp(80px, 28vw, 150px); font-weight: 700; line-height: 1;
     font-variant-numeric: tabular-nums; letter-spacing: -3px;
   }
+  .speed-val.overspeed { color: var(--danger); text-shadow: 0 0 20px rgba(255,69,58,0.7); }
   .speed-unit { font-size: 20px; color: var(--text-dim); font-weight: 500; }
+
+  .limits-container { display: flex; justify-content: center; gap: 12px; margin-bottom: 12px; }
+  .speed-limit-wrap { text-align: center; }
   .speed-limit-badge {
     display: flex; align-items: center; justify-content: center;
     width: 64px; height: 64px; border-radius: 50%;
     background: white; color: #c0392b; font-weight: 800; font-size: 24px;
     border: 5px solid #c0392b; margin: 0 auto; font-variant-numeric: tabular-nums;
   }
-  .speed-limit-wrap { text-align: center; margin-bottom: 12px; }
+  .speed-limit-badge.pl { border-color: #e67e22; color: #d35400; font-size: 20px; }
   .speed-limit-label { color: var(--text-dim); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
   .next-radar {
@@ -163,7 +178,7 @@
 
   .row { display: flex; justify-content: space-between; align-items: center;
     padding: 12px 14px; background: var(--surface-2); border-radius: 12px; margin-bottom: 8px; gap: 12px; }
-  .row label { font-size: 15px; }
+  .row label { font-size: 15px; display: flex; align-items: center; gap: 8px; }
   .row .val { font-size: 15px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
   .row .sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
   .row .main { display: flex; flex-direction: column; flex: 1; }
@@ -239,21 +254,28 @@
     font-size: 10px !important; }
   .leaflet-control-attribution a { color: var(--text-dim) !important; }
 
+  /* Radar Icons */
   .radar-icon {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 30px; height: 30px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 14px; font-weight: 700;
+    color: white; font-size: 15px; font-weight: 700;
     border: 2px solid rgba(255,255,255,0.9);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
   }
   .radar-fixe { background: #ff3b30; }
-  .radar-feu { background: #ff9500; }
-  .radar-troncon { background: #5856d6; }
-  .radar-vitesse { background: #af52de; }
+  .radar-tourelle { background: #5856d6; }
+  .radar-discriminant { background: #af52de; }
+  .radar-chantier { background: #ff9500; }
+  .radar-urbain { background: #00c7be; }
+  .radar-feu { background: #ff2d55; }
+  .radar-troncon { background: #007aff; }
   .radar-passage { background: #ffcc00; color: #000; }
+  .radar-leurre { background: #8e8e93; }
   .radar-community { background: #32d74b; }
   .radar-mobile { background: #ff2d55; }
+  .radar-voiture { background: #bf5af2; }
   .radar-danger { background: #ff9f0a; }
+  .radar-controle { background: #0a84ff; }
   .radar-other { background: #8e8e93; }
 
   .user-position {
@@ -267,8 +289,10 @@
   }
   .leaflet-popup-tip { background: var(--surface) !important; }
   .leaflet-popup-content { margin: 12px 14px !important; font-size: 13px; }
-  .leaflet-popup-content strong { display: block; margin-bottom: 4px; font-size: 14px; }
-  .leaflet-popup-content .muted { color: var(--text-dim); font-size: 12px; display: block; }
+  .leaflet-popup-content strong { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 14px; }
+  .leaflet-popup-content .muted { color: var(--text-dim); font-size: 12px; display: block; margin-top: 2px; }
+  .leaflet-popup-content .speed-tag { display: inline-block; background: #c0392b; color: white; padding: 2px 6px; border-radius: 6px; font-weight: 700; margin-top: 4px; }
+  .leaflet-popup-content .speed-tag.pl { background: #d35400; margin-left: 4px; }
   .leaflet-popup-content .vote-row { display: flex; gap: 8px; margin-top: 8px; }
   .leaflet-popup-content .vote-btn {
     flex: 1; background: var(--surface-2); border: none; color: var(--text);
@@ -304,7 +328,7 @@
 <!-- CAR MODE -->
 <div class="car-mode" id="carMode">
   <div class="car-header">
-    <div class="car-title">Mode voiture</div>
+    <div class="car-title">Mode voiture tête-haute</div>
     <button class="car-exit" id="btnExitCar">Quitter</button>
   </div>
 
@@ -313,9 +337,15 @@
     <div class="speed-unit">km/h</div>
   </div>
 
-  <div class="speed-limit-wrap" id="carLimitBlock" style="display:none;">
-    <div class="speed-limit-badge" id="carLimit">—</div>
-    <div class="speed-limit-label">Vitesse au radar</div>
+  <div class="limits-container" id="carLimitsContainer" style="display:none;">
+    <div class="speed-limit-wrap" id="carLimitBlock">
+      <div class="speed-limit-badge" id="carLimit">—</div>
+      <div class="speed-limit-label">VL (Voiture)</div>
+    </div>
+    <div class="speed-limit-wrap" id="carLimitPlBlock" style="display:none;">
+      <div class="speed-limit-badge pl" id="carLimitPl">—</div>
+      <div class="speed-limit-label">PL / Camion</div>
+    </div>
   </div>
 
   <div class="next-radar none" id="carNext">
@@ -341,9 +371,9 @@
     <div class="stat"><div class="stat-val" id="statCommunity">—</div><div class="stat-lab">Communauté</div></div>
   </div>
 
-  <p class="loader-text" style="margin: 0 0 12px 2px;">💡 Tap long sur la carte pour signaler un radar</p>
+  <p class="loader-text" style="margin: 0 0 12px 2px;">💡 Tap long sur la carte pour signaler un événement</p>
 
-  <h3>Alertes</h3>
+  <h3>Alertes & Audio</h3>
   <div class="row">
     <div class="main"><label>Distance de déclenchement</label></div>
     <span class="val"><span id="distVal">800</span> m</span>
@@ -352,13 +382,27 @@
 
   <div class="row">
     <div class="main">
+      <label>🗣️ Annonces vocales (TTS)</label>
+      <span class="sub">Annonce parlée du radar et de la limitation</span>
+    </div>
+    <label class="switch"><input type="checkbox" id="swVoice" checked><span class="slider-sw"></span></label>
+  </div>
+  <div class="row">
+    <div class="main">
+      <label>🚨 Alerte de survitesse</label>
+      <span class="sub">Alarme si votre vitesse dépasse la limite</span>
+    </div>
+    <label class="switch"><input type="checkbox" id="swOverspeed" checked><span class="slider-sw"></span></label>
+  </div>
+  <div class="row">
+    <div class="main">
       <label>Alerter seulement devant moi</label>
       <span class="sub">±60° de ma direction</span>
     </div>
     <label class="switch"><input type="checkbox" id="swFront" checked><span class="slider-sw"></span></label>
   </div>
   <div class="row">
-    <label>Son</label>
+    <label>Bip sonore</label>
     <label class="switch"><input type="checkbox" id="swSound" checked><span class="slider-sw"></span></label>
   </div>
   <div class="row">
@@ -386,17 +430,25 @@
     <label class="switch"><input type="checkbox" id="swWakeLock" checked><span class="slider-sw"></span></label>
   </div>
 
-  <h3>Types de radars</h3>
-  <div class="row"><label>Radars fixes</label>
+  <h3>Types de radars officiels</h3>
+  <div class="row"><label>📷 Radars fixes classiques</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar fixe" checked><span class="slider-sw"></span></label></div>
-  <div class="row"><label>Feux rouges</label>
+  <div class="row"><label>🗼 Radars tourelles</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar tourelle" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🚛 Radars discriminants (VL/PL)</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar discriminant" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🚧 Radars autonomes / chantier</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar autonome / chantier" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🏙️ Radars urbains</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Radar urbain" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🚦 Radars feux rouges</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar feu rouge" checked><span class="slider-sw"></span></label></div>
-  <div class="row"><label>Tronçons</label>
+  <div class="row"><label>⏱️ Radars tronçons (vitesse moy.)</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar tronçon" checked><span class="slider-sw"></span></label></div>
-  <div class="row"><label>Vitesse moyenne</label>
-    <label class="switch"><input type="checkbox" class="flt" data-type="Radar vitesse moyenne" checked><span class="slider-sw"></span></label></div>
-  <div class="row"><label>Passages à niveau</label>
+  <div class="row"><label>🚂 Passages à niveau</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Radar passage a niveau" checked><span class="slider-sw"></span></label></div>
+  <div class="row"><label>🎭 Cabines leurres / Itinéraires</label>
+    <label class="switch"><input type="checkbox" class="flt" data-type="Itinéraire sécurisé / leurre" checked><span class="slider-sw"></span></label></div>
 
   <h3>Communauté</h3>
   <div class="row">
@@ -408,20 +460,22 @@
   </div>
 
   <h3>Données</h3>
-  <button class="btn secondary" id="btnRefresh">Recharger les radars officiels</button>
+  <button class="btn secondary" id="btnRefresh">Recharger la base officielle</button>
   <button class="btn secondary" id="btnClose">Fermer</button>
 </div>
 
 <!-- ADD DIALOG -->
 <div class="add-dialog" id="addDialog">
   <div class="panel-grab"></div>
-  <h2>Signaler un radar</h2>
+  <h2>Signaler un événement</h2>
   <p class="loader-text" id="addCoords">—</p>
   <div class="type-grid">
     <button class="type-btn" data-type="mobile"><span class="type-emoji">🚓</span>Radar mobile</button>
-    <button class="type-btn" data-type="nouveau"><span class="type-emoji">📡</span>Nouveau radar fixe</button>
+    <button class="type-btn" data-type="voiture_radar"><span class="type-emoji">🚙</span>Voiture-radar</button>
+    <button class="type-btn" data-type="chantier"><span class="type-emoji">🚧</span>Radar chantier</button>
     <button class="type-btn" data-type="controle"><span class="type-emoji">👮</span>Zone de contrôle</button>
     <button class="type-btn" data-type="danger"><span class="type-emoji">⚠️</span>Zone de danger</button>
+    <button class="type-btn" data-type="nouveau"><span class="type-emoji">📡</span>Nouveau fixe</button>
   </div>
   <button class="btn" id="btnConfirmAdd" disabled>Confirmer le signalement</button>
   <button class="btn secondary" id="btnCancelAdd">Annuler</button>
@@ -438,7 +492,6 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-// Fallback si jsdelivr n'a pas chargé
 if (!window.supabase) {
   document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
 }
@@ -448,13 +501,12 @@ if (!window.supabase) {
 // ============================================================
 //  CONFIG
 // ============================================================
-const DATA_URL = 'https://www.data.gouv.fr/api/1/datasets/r/8a22b5a8-4b65-41be-891a-7c0aead4ba51';
-const FALLBACK_URL = 'https://raw.githubusercontent.com/AntoineAugusti/radars-france/master/data/radars.csv';
+const LOCAL_DATA_URL = './radars.json';
+const DATA_GOUV_URL = 'https://www.data.gouv.fr/api/1/datasets/r/8a22b5a8-4b65-41be-891a-7c0aead4ba51';
 const CORS_PROXY = 'https://corsproxy.io/?';
-const CACHE_KEY = 'radars_cache_v1';
+const CACHE_KEY = 'radars_cache_v2';
 const CACHE_TTL = 7 * 24 * 3600 * 1000;
 
-// window.SUPABASE_URL et window.SUPABASE_ANON_KEY viennent de config.js
 const SUPABASE_URL = window.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 
@@ -472,7 +524,7 @@ const STATE = {
   radars: [], community: [], markers: [], communityMarkers: [],
   userMarker: null, userPos: null, userHeading: null, userSpeed: 0,
   lastPositions: [], accuracyCircle: null,
-  lastAlertId: null, lastAlertTime: 0,
+  lastAlertId: null, lastAlertTime: 0, lastSpeechTime: 0, lastSpeechText: '',
   followUser: true, carMode: false, carModeTimer: null,
   wakeLock: null, supabase: null, addPending: null, userId: null,
   settings: loadSettings()
@@ -480,23 +532,69 @@ const STATE = {
 
 function loadSettings() {
   try {
-    const s = JSON.parse(localStorage.getItem('radars_settings_v2') || '{}');
+    const s = JSON.parse(localStorage.getItem('radars_settings_v3') || '{}');
     return {
-      distance: s.distance ?? 800, sound: s.sound ?? true, vibrate: s.vibrate ?? true,
-      notif: s.notif ?? false, front: s.front ?? true, autoCar: s.autoCar ?? true,
-      wakeLock: s.wakeLock ?? true, community: s.community ?? true, filters: s.filters ?? {}
+      distance: s.distance ?? 800, voice: s.voice ?? true, overspeed: s.overspeed ?? true,
+      sound: s.sound ?? true, vibrate: s.vibrate ?? true, notif: s.notif ?? false,
+      front: s.front ?? true, autoCar: s.autoCar ?? true, wakeLock: s.wakeLock ?? true,
+      community: s.community ?? true, filters: s.filters ?? {}
     };
-  } catch { return { distance: 800, sound: true, vibrate: true, notif: false,
-      front: true, autoCar: true, wakeLock: true, community: true, filters: {} }; }
+  } catch {
+    return {
+      distance: 800, voice: true, overspeed: true, sound: true, vibrate: true, notif: false,
+      front: true, autoCar: true, wakeLock: true, community: true, filters: {}
+    };
+  }
 }
-function saveSettings() { localStorage.setItem('radars_settings_v2', JSON.stringify(STATE.settings)); }
+function saveSettings() { localStorage.setItem('radars_settings_v3', JSON.stringify(STATE.settings)); }
 
 (function initUserId() {
   let id = localStorage.getItem('radars_user_id');
-  if (!id) { id = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    localStorage.setItem('radars_user_id', id); }
+  if (!id) {
+    id = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    localStorage.setItem('radars_user_id', id);
+  }
   STATE.userId = id;
 })();
+
+// ============================================================
+//  VOICE / TTS (Web Speech API)
+// ============================================================
+let synthVoice = null;
+function initVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const updateVoices = () => {
+    const voices = window.speechSynthesis.getVoices();
+    synthVoice = voices.find(v => v.lang.startsWith('fr') && v.localService) ||
+                 voices.find(v => v.lang.startsWith('fr')) || null;
+  };
+  updateVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }
+}
+initVoice();
+
+function speakAlert(text, isUrgent = false) {
+  if (!STATE.settings.voice || !('speechSynthesis' in window)) return;
+  const now = Date.now();
+  if (!isUrgent && STATE.lastSpeechText === text && now - STATE.lastSpeechTime < 25000) return;
+  
+  STATE.lastSpeechText = text;
+  STATE.lastSpeechTime = now;
+
+  try {
+    if (isUrgent) window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.rate = isUrgent ? 1.15 : 1.05;
+    utterance.pitch = isUrgent ? 1.1 : 1.0;
+    if (synthVoice) utterance.voice = synthVoice;
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('Speech error:', e);
+  }
+}
 
 // ============================================================
 //  SUPABASE
@@ -507,16 +605,15 @@ function initSupabase() {
     statusEl.textContent = 'Non configuré — voir README';
     return false;
   }
-  // createClient peut venir de jsdelivr ou unpkg selon ce qui a chargé
   const _createClient = (window.supabase && window.supabase.createClient)
     || (window.supabaseJs && window.supabaseJs.createClient);
   if (!_createClient) {
-    statusEl.textContent = 'Librairie Supabase non chargée';
+    statusEl.textContent = 'Librairie Supabase non disponible';
     return false;
   }
   try {
     STATE.supabase = _createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    statusEl.textContent = 'Connecté — tap long sur carte pour signaler';
+    statusEl.textContent = 'Connecté — tap long pour signaler';
     return true;
   } catch (e) {
     statusEl.textContent = 'Erreur de connexion';
@@ -555,7 +652,7 @@ async function addCommunityRadar(lat, lng, kind, note = '') {
       lat, lng, kind, note, user_id: STATE.userId, active: true, votes: 1
     });
     if (error) throw error;
-    toast('Signalement envoyé, merci !');
+    toast('Signalement communautaire envoyé, merci !');
     if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
     return true;
   } catch (e) { toast('Erreur : ' + e.message); return false; }
@@ -564,7 +661,11 @@ async function addCommunityRadar(lat, lng, kind, note = '') {
 async function voteRadar(cId, delta) {
   if (!STATE.supabase) return;
   try {
-    const { error } = await STATE.supabase.rpc('vote_radar', { radar_id: cId, delta });
+    const { error } = await STATE.supabase.rpc('vote_radar', {
+      radar_id: cId,
+      delta: delta,
+      p_user_id: STATE.userId
+    });
     if (error) throw error;
     toast(delta > 0 ? 'Confirmé 👍' : 'Signalé absent 👎');
     if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
@@ -583,13 +684,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 map.on('dragstart', () => { STATE.followUser = false; });
 
-// Tap long pour ajouter un radar
+// Long tap to add radar
 let tapTimer = null, tapStart = null;
 function onTapStart(e) {
   if (STATE.carMode) return;
   tapStart = e.latlng;
   if (tapTimer) clearTimeout(tapTimer);
-  tapTimer = setTimeout(() => { if (tapStart) openAddDialog(tapStart.lat, tapStart.lng); }, 700);
+  tapTimer = setTimeout(() => { if (tapStart) openAddDialog(tapStart.lat, tapStart.lng); }, 650);
 }
 function cancelTap() { if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; } tapStart = null; }
 map.on('mousedown', onTapStart);
@@ -597,8 +698,59 @@ map.on('touchstart', (e) => { if (e.originalEvent && e.originalEvent.touches.len
 map.on('mouseup touchend mousemove touchmove dragstart zoomstart', cancelTap);
 
 // ============================================================
-//  CSV
+//  DATA LOADING
 // ============================================================
+async function loadRadars(forceRefresh = false) {
+  if (!forceRefresh) {
+    // 1. Try local storage cache
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && Date.now() - cached.time < CACHE_TTL && cached.data?.length > 100) {
+        STATE.radars = cached.data;
+        return { source: 'cache', date: cached.time };
+      }
+    } catch {}
+
+    // 2. Try embedded radars.json
+    try {
+      setLoader('Chargement de la base radars…');
+      const r = await fetch(LOCAL_DATA_URL);
+      if (r.ok) {
+        const json = await r.json();
+        if (json.radars && json.radars.length > 500) {
+          STATE.radars = json.radars;
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: json.radars }));
+          return { source: 'local', date: Date.now() };
+        }
+      }
+    } catch (e) {
+      console.warn('Local radars.json not reachable, trying online fallback...', e);
+    }
+  }
+
+  // 3. Fallback online data.gouv.fr
+  const urls = [
+    DATA_GOUV_URL,
+    CORS_PROXY + encodeURIComponent(DATA_GOUV_URL)
+  ];
+  let lastErr;
+  for (const url of urls) {
+    try {
+      setLoader('Téléchargement data.gouv.fr…');
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      const data = parseCSV(text);
+      if (data.length < 100) throw new Error('Données incomplètes');
+      STATE.radars = data;
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data }));
+      return { source: 'network', date: Date.now() };
+    } catch (e) { lastErr = e; }
+  }
+
+  throw lastErr || new Error('Impossible de charger les données radars');
+}
+
 function parseCSVLine(line) {
   const out = []; let cur = '', inQ = false;
   for (let i = 0; i < line.length; i++) {
@@ -609,6 +761,7 @@ function parseCSVLine(line) {
   }
   out.push(cur); return out;
 }
+
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (!lines.length) return [];
@@ -620,11 +773,17 @@ function parseCSV(text) {
     const lat = parseFloat(row.latitude);
     const lng = parseFloat(row.longitude);
     if (!isNaN(lat) && !isNaN(lng) && lat > 40 && lat < 52) {
+      const v_vl = parseInt(row.vitesse_vehicules_legers_kmh) || null;
+      const v_pl = parseInt(row.vitesse_poids_lourds_kmh) || null;
       out.push({
-        id: row.id, lat, lng,
-        type: row.type || 'Radar', route: row.route || '',
-        emplacement: row.emplacement || '', direction: row.direction || '',
-        vitesse: row.vitesse_vehicules_legers_kmh || '', dep: row.departement || ''
+        id: row.id || String(i), lat, lng,
+        type: row.type || 'Radar fixe',
+        route: row.route || '',
+        emplacement: row.emplacement || '',
+        direction: row.direction || '',
+        vitesse: v_vl,
+        vitesse_pl: v_pl && v_pl !== v_vl ? v_pl : null,
+        dep: row.departement || ''
       });
     }
   }
@@ -632,89 +791,60 @@ function parseCSV(text) {
 }
 
 // ============================================================
-//  DATA LOADING
+//  MARKERS & ICONS
 // ============================================================
-async function loadRadars(forceRefresh = false) {
-  if (!forceRefresh) {
-    try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-      if (cached && Date.now() - cached.time < CACHE_TTL) {
-        STATE.radars = cached.data;
-        return { source: 'cache', date: cached.time };
-      }
-    } catch {}
-  }
-  const urls = [DATA_URL, FALLBACK_URL,
-    CORS_PROXY + encodeURIComponent(DATA_URL),
-    CORS_PROXY + encodeURIComponent(FALLBACK_URL)];
-  let lastErr;
-  for (const url of urls) {
-    try {
-      setLoader('Téléchargement des radars…');
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const text = await r.text();
-      const data = parseCSV(text);
-      if (data.length < 100) throw new Error('Données incomplètes');
-      STATE.radars = data;
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data }));
-      return { source: 'network', date: Date.now() };
-    } catch (e) { lastErr = e; }
-  }
-  try {
-    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-    if (cached) { STATE.radars = cached.data; return { source: 'stale', date: cached.time }; }
-  } catch {}
-  throw lastErr || new Error('Aucune donnée');
+function typeInfo(t) {
+  t = (t || '').toLowerCase();
+  if (t === 'mobile') return { cls: 'radar-mobile', icon: '🚓', label: 'Radar mobile' };
+  if (t === 'voiture_radar') return { cls: 'radar-voiture', icon: '🚙', label: 'Voiture-radar' };
+  if (t === 'chantier' || t.includes('chantier') || t.includes('autonome'))
+    return { cls: 'radar-chantier', icon: '🚧', label: 'Radar autonome / chantier' };
+  if (t === 'nouveau') return { cls: 'radar-community', icon: '📡', label: 'Nouveau radar' };
+  if (t === 'controle') return { cls: 'radar-controle', icon: '👮', label: 'Zone de contrôle' };
+  if (t === 'danger') return { cls: 'radar-danger', icon: '⚠️', label: 'Zone de danger' };
+  if (t.includes('tourelle')) return { cls: 'radar-tourelle', icon: '🗼', label: 'Radar tourelle' };
+  if (t.includes('discriminant')) return { cls: 'radar-discriminant', icon: '🚛', label: 'Radar discriminant' };
+  if (t.includes('urbain')) return { cls: 'radar-urbain', icon: '🏙️', label: 'Radar urbain' };
+  if (t.includes('feu')) return { cls: 'radar-feu', icon: '🚦', label: 'Radar feu rouge' };
+  if (t.includes('tronçon') || t.includes('troncon') || t.includes('moyenne'))
+    return { cls: 'radar-troncon', icon: '⏱️', label: 'Radar tronçon' };
+  if (t.includes('passage')) return { cls: 'radar-passage', icon: '🚂', label: 'Radar passage à niveau' };
+  if (t.includes('itin') || t.includes('leurre')) return { cls: 'radar-leurre', icon: '🎭', label: 'Itinéraire sécurisé / leurre' };
+  if (t.includes('fixe')) return { cls: 'radar-fixe', icon: '📷', label: 'Radar fixe' };
+  return { cls: 'radar-other', icon: '📷', label: t || 'Radar' };
 }
 
-// ============================================================
-//  MARKERS
-// ============================================================
-function typeClass(t) {
-  t = (t || '').toLowerCase();
-  if (t === 'mobile') return { cls: 'radar-mobile', icon: 'M' };
-  if (t === 'nouveau') return { cls: 'radar-community', icon: 'N' };
-  if (t === 'controle') return { cls: 'radar-community', icon: 'C' };
-  if (t === 'danger') return { cls: 'radar-danger', icon: '!' };
-  if (t.includes('feu')) return { cls: 'radar-feu', icon: 'F' };
-  if (t.includes('tronçon') || t.includes('troncon')) return { cls: 'radar-troncon', icon: 'T' };
-  if (t.includes('moyenne')) return { cls: 'radar-vitesse', icon: 'V' };
-  if (t.includes('passage')) return { cls: 'radar-passage', icon: 'P' };
-  if (t.includes('fixe')) return { cls: 'radar-fixe', icon: 'R' };
-  return { cls: 'radar-other', icon: '?' };
-}
-function typeKey(t) {
-  t = (t || '').toLowerCase();
-  if (t.includes('feu')) return 'Radar feu rouge';
-  if (t.includes('tronçon') || t.includes('troncon')) return 'Radar tronçon';
-  if (t.includes('moyenne')) return 'Radar vitesse moyenne';
-  if (t.includes('passage')) return 'Radar passage a niveau';
-  if (t.includes('fixe')) return 'Radar fixe';
-  return 'Autre';
-}
-function prettyType(t) {
-  return { mobile: 'Radar mobile', nouveau: 'Nouveau radar', controle: 'Zone de contrôle', danger: 'Zone de danger' }[t] || t;
-}
+function prettyType(t) { return typeInfo(t).label; }
+
 function makeIcon(r) {
-  const { cls, icon } = typeClass(r.type);
-  return L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14, 14],
-    html: `<div class="radar-icon ${cls}">${icon}</div>` });
+  const info = typeInfo(r.type);
+  return L.divIcon({
+    className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+    html: `<div class="radar-icon ${info.cls}">${info.icon}</div>`
+  });
 }
+
 function renderMarkers() {
   STATE.markers.forEach(m => m.remove());
   STATE.markers = [];
   STATE.radars.forEach(r => {
-    if (STATE.settings.filters[typeKey(r.type)] === false) return;
+    if (STATE.settings.filters[r.type] === false) return;
     const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r) });
-    const popup = `<strong>${r.type}</strong>
+    const info = typeInfo(r.type);
+    const speedTag = r.vitesse ? `<span class="speed-tag">VL ${r.vitesse} km/h</span>` : '';
+    const speedPlTag = r.vitesse_pl ? `<span class="speed-tag pl">PL ${r.vitesse_pl} km/h</span>` : '';
+    const lengthTag = r.longueur_troncon_km ? `<span class="muted">Tronçon : ${r.longueur_troncon_km} km</span>` : '';
+
+    const popup = `<strong>${info.icon} ${r.type}</strong>
       ${r.emplacement ? `<span class="muted">${r.emplacement}${r.route ? ' — ' + r.route : ''}</span>` : ''}
-      ${r.vitesse ? `<span class="muted">Vitesse : ${r.vitesse} km/h</span>` : ''}
+      <div>${speedTag}${speedPlTag}</div>
+      ${lengthTag}
       ${r.direction ? `<span class="muted">${r.direction}</span>` : ''}`;
     marker.bindPopup(popup); marker.addTo(map);
     STATE.markers.push(marker);
   });
 }
+
 function renderCommunityMarkers() {
   STATE.communityMarkers.forEach(m => m.remove());
   STATE.communityMarkers = [];
@@ -723,7 +853,8 @@ function renderCommunityMarkers() {
     const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r) });
     const age = Math.max(0, Math.round((Date.now() - new Date(r.created_at).getTime()) / 3600000));
     const ageStr = age < 1 ? "< 1h" : age + 'h';
-    const popup = `<strong>${prettyType(r.type)}</strong>
+    const info = typeInfo(r.type);
+    const popup = `<strong>${info.icon} ${prettyType(r.type)}</strong>
       ${r.emplacement ? `<span class="muted">${r.emplacement}</span>` : ''}
       <span class="muted">Signalé il y a ${ageStr} · ${r.votes} confirmation(s)</span>
       <div class="vote-row">
@@ -736,7 +867,7 @@ function renderCommunityMarkers() {
 }
 
 // ============================================================
-//  GEO
+//  GEO & MATH
 // ============================================================
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000, toRad = d => d * Math.PI / 180;
@@ -744,6 +875,7 @@ function haversine(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+
 function bearing(lat1, lng1, lat2, lng2) {
   const toRad = d => d * Math.PI / 180, toDeg = r => r * 180 / Math.PI;
   const dLng = toRad(lng2 - lng1);
@@ -752,6 +884,7 @@ function bearing(lat1, lng1, lat2, lng2) {
             Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
+
 function angleDiff(a, b) { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
 
 // ============================================================
@@ -761,9 +894,10 @@ function startGeolocation() {
   if (!('geolocation' in navigator)) { setStatus('Géolocalisation indisponible', false); return; }
   setStatus('Recherche de position…', false);
   navigator.geolocation.watchPosition(onPos, onPosErr, {
-    enableHighAccuracy: true, maximumAge: 3000, timeout: 20000
+    enableHighAccuracy: true, maximumAge: 2000, timeout: 15000
   });
 }
+
 function onPos(p) {
   const { latitude, longitude, accuracy, speed, heading } = p.coords;
   const now = p.timestamp || Date.now();
@@ -807,9 +941,7 @@ function onPos(p) {
     if (STATE.followUser) map.panTo(latlng);
   }
 
-  // Recharger communauté si on s'éloigne
   if (STATE.community.length && STATE.userPos) {
-    // Check par rapport au centre de notre dernier chargement
     const needReload = STATE.community.every(c =>
       haversine(latitude, longitude, c.lat, c.lng) > COMMUNITY_RADIUS_KM * 1000 * 0.8);
     if (needReload) loadCommunityRadars(latitude, longitude);
@@ -818,21 +950,23 @@ function onPos(p) {
   updateCarUI(); checkProximity(); updateNearStat(); maybeAutoCarMode();
   setStatus(`GPS actif — ${Math.round(STATE.userSpeed * 3.6)} km/h`, true);
 }
+
 function onPosErr(err) {
   const msgs = { 1: 'Position refusée', 2: 'Position indisponible', 3: 'Timeout GPS' };
   setStatus(msgs[err.code] || 'Erreur GPS', false);
 }
 
 // ============================================================
-//  PROXIMITY
+//  PROXIMITY & ALERTS
 // ============================================================
 function checkProximity() {
   if (!STATE.userPos) return;
   const threshold = STATE.settings.distance;
   let nearest = null;
   const all = [...STATE.radars, ...STATE.community];
+
   for (const r of all) {
-    if (!r.community && STATE.settings.filters[typeKey(r.type)] === false) continue;
+    if (!r.community && STATE.settings.filters[r.type] === false) continue;
     if (r.community && !STATE.settings.community) continue;
     const d = haversine(STATE.userPos.lat, STATE.userPos.lng, r.lat, r.lng);
     if (d >= threshold) continue;
@@ -844,6 +978,7 @@ function checkProximity() {
   }
   if (nearest) showAlert(nearest.r, nearest.d); else hideAlert();
 }
+
 function updateNearStat() {
   if (!STATE.userPos) return;
   let count = 0;
@@ -853,11 +988,8 @@ function updateNearStat() {
   document.getElementById('statNear').textContent = count;
 }
 
-// ============================================================
-//  ALERTS
-// ============================================================
 let audioCtx = null;
-function beep(freq = 880) {
+function beep(freq = 880, duration = 0.4) {
   if (!STATE.settings.sound) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -866,53 +998,89 @@ function beep(freq = 880) {
     o.connect(g); g.connect(audioCtx.destination);
     o.frequency.value = freq; o.type = 'sine';
     g.gain.setValueAtTime(0, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-    o.start(); o.stop(audioCtx.currentTime + 0.4);
+    g.gain.linearRampToValueAtTime(0.35, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    o.start(); o.stop(audioCtx.currentTime + duration);
   } catch {}
 }
+
 function showAlert(r, d) {
   const bar = document.getElementById('alertBar');
+  const info = typeInfo(r.type);
+  const currentSpeedKmh = Math.round(STATE.userSpeed * 3.6);
+  const isOverspeed = STATE.settings.overspeed && r.vitesse && currentSpeedKmh > (r.vitesse + 3);
+
   document.getElementById('alertTitle').textContent = r.community ? prettyType(r.type) : r.type;
-  document.getElementById('alertSubtitle').textContent =
-    [r.emplacement, r.route, r.vitesse ? r.vitesse + ' km/h' : ''].filter(Boolean).join(' · ') || '—';
+  
+  let subtitleParts = [r.emplacement, r.route];
+  if (r.vitesse) {
+    subtitleParts.push(`Limitation : ${r.vitesse} km/h${r.vitesse_pl ? ' (PL ' + r.vitesse_pl + ')' : ''}`);
+  }
+  document.getElementById('alertSubtitle').textContent = subtitleParts.filter(Boolean).join(' · ') || '—';
   document.getElementById('alertDistance').textContent = Math.round(d) + ' m';
+  
   const icon = document.getElementById('alertIcon');
-  bar.classList.remove('danger', 'warning');
-  if (d < 300) { bar.classList.add('danger'); icon.textContent = '🚨'; }
-  else if (d < 600) { bar.classList.add('warning'); icon.textContent = '⚠️'; }
-  else icon.textContent = '📡';
+  bar.classList.remove('danger', 'warning', 'overspeed');
+
+  if (isOverspeed) {
+    bar.classList.add('overspeed');
+    icon.textContent = '🚨';
+  } else if (d < 300) {
+    bar.classList.add('danger');
+    icon.textContent = info.icon || '⚠️';
+  } else if (d < 600) {
+    bar.classList.add('warning');
+    icon.textContent = info.icon || '⚠️';
+  } else {
+    icon.textContent = info.icon || '📡';
+  }
+
   bar.classList.add('show');
   document.getElementById('statusDot').classList.add('alert');
 
-  if (STATE.lastAlertId !== r.id || Date.now() - STATE.lastAlertTime > 60000) {
-    STATE.lastAlertId = r.id; STATE.lastAlertTime = Date.now();
-    beep(d < 300 ? 1200 : 880);
-    if (d < 300) setTimeout(() => beep(1200), 250);
+  // Trigger alert sound, vibration, notifications & voice
+  if (STATE.lastAlertId !== r.id || Date.now() - STATE.lastAlertTime > 45000) {
+    STATE.lastAlertId = r.id;
+    STATE.lastAlertTime = Date.now();
+
+    beep(isOverspeed ? 1500 : (d < 300 ? 1200 : 880));
+    if (d < 300 || isOverspeed) setTimeout(() => beep(isOverspeed ? 1500 : 1200), 200);
+
     if (STATE.settings.vibrate && 'vibrate' in navigator) {
-      navigator.vibrate(d < 300 ? [300, 100, 300, 100, 300] : [200, 100, 200]);
+      navigator.vibrate(isOverspeed ? [400, 100, 400, 100, 400] : (d < 300 ? [300, 100, 300] : [200, 100, 200]));
     }
+
+    // Voice announcement (TTS)
+    let speechText = `Attention, ${r.community ? prettyType(r.type) : r.type} à ${Math.round(d)} mètres.`;
+    if (r.vitesse) speechText += ` Limité à ${r.vitesse} kilomètre heure.`;
+    if (isOverspeed) speechText += ` Ralentissez ! Vous êtes à ${currentSpeedKmh}.`;
+    speakAlert(speechText, isOverspeed);
+
     if (STATE.settings.notif && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('Radar à ' + Math.round(d) + 'm', {
-        body: `${r.community ? prettyType(r.type) : r.type} · ${r.emplacement || r.route || ''}`,
+      new Notification(`${r.type} à ${Math.round(d)}m`, {
+        body: `${r.emplacement || r.route || ''}${r.vitesse ? ' · ' + r.vitesse + ' km/h' : ''}`,
         icon: './icons/icon-192.png', tag: 'radar-' + r.id
       });
     }
   }
 }
+
 function hideAlert() {
-  document.getElementById('alertBar').classList.remove('show');
+  document.getElementById('alertBar').classList.remove('show', 'overspeed');
   document.getElementById('statusDot').classList.remove('alert');
   STATE.lastAlertId = null;
 }
+
 function setStatus(text, active) {
   document.getElementById('statusText').textContent = text;
   const dot = document.getElementById('statusDot');
   dot.classList.remove('alert');
   if (active) dot.classList.add('active'); else dot.classList.remove('active');
 }
+
 function setLoader(text) { document.getElementById('loaderText').textContent = text; }
 function hideLoader() { document.getElementById('loader').classList.add('hide'); }
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
@@ -930,13 +1098,15 @@ async function enterCarMode() {
   await requestWakeLock();
   updateCarUI();
 }
+
 async function exitCarMode() {
   if (!STATE.carMode) return;
   STATE.carMode = false;
-  document.body.classList.remove('car-on');
+  document.body.classList.remove('car-on', 'car-overspeed');
   document.getElementById('btnCar').classList.remove('on');
   releaseWakeLock();
 }
+
 async function requestWakeLock() {
   if (!STATE.settings.wakeLock || !('wakeLock' in navigator)) return;
   try {
@@ -944,12 +1114,15 @@ async function requestWakeLock() {
     STATE.wakeLock.addEventListener('release', () => { STATE.wakeLock = null; });
   } catch {}
 }
+
 function releaseWakeLock() {
   if (STATE.wakeLock) { STATE.wakeLock.release().catch(() => {}); STATE.wakeLock = null; }
 }
+
 document.addEventListener('visibilitychange', () => {
   if (STATE.carMode && document.visibilityState === 'visible') requestWakeLock();
 });
+
 function maybeAutoCarMode() {
   if (!STATE.settings.autoCar) return;
   if (STATE.userSpeed > CAR_ON && !STATE.carMode) {
@@ -964,16 +1137,21 @@ function maybeAutoCarMode() {
     if (STATE.carModeTimer) { clearTimeout(STATE.carModeTimer); STATE.carModeTimer = null; }
   }
 }
+
 function updateCarUI() {
   if (!STATE.carMode) return;
-  document.getElementById('carSpeed').textContent = Math.max(0, Math.round(STATE.userSpeed * 3.6));
+  const currentSpeed = Math.max(0, Math.round(STATE.userSpeed * 3.6));
+  const speedEl = document.getElementById('carSpeed');
+  speedEl.textContent = currentSpeed;
+  
   if (!STATE.userPos) return;
 
   let nearest = null;
   const threshold = 5000;
   const all = [...STATE.radars, ...STATE.community];
+
   for (const r of all) {
-    if (!r.community && STATE.settings.filters[typeKey(r.type)] === false) continue;
+    if (!r.community && STATE.settings.filters[r.type] === false) continue;
     if (r.community && !STATE.settings.community) continue;
     const d = haversine(STATE.userPos.lat, STATE.userPos.lng, r.lat, r.lng);
     if (d >= threshold) continue;
@@ -983,10 +1161,13 @@ function updateCarUI() {
     }
     if (!nearest || d < nearest.d) nearest = { r, d };
   }
+
   const block = document.getElementById('carNext');
   block.classList.remove('alert', 'warning', 'none');
-  const limitBlock = document.getElementById('carLimitBlock');
-  limitBlock.style.display = 'none';
+  const limitsContainer = document.getElementById('carLimitsContainer');
+  const limitPlBlock = document.getElementById('carLimitPlBlock');
+  limitsContainer.style.display = 'none';
+  limitPlBlock.style.display = 'none';
 
   if (!nearest) {
     document.getElementById('carRadarType').textContent = 'Aucun radar devant';
@@ -994,11 +1175,24 @@ function updateCarUI() {
     document.getElementById('carRadarUnit').textContent = '';
     document.getElementById('carRadarInfo').textContent = '—';
     block.classList.add('none');
+    speedEl.classList.remove('overspeed');
+    document.body.classList.remove('car-overspeed');
     return;
   }
+
   const { r, d } = nearest;
-  if (d < 300) block.classList.add('alert');
-  else if (d < 800) block.classList.add('warning');
+  const isOverspeed = STATE.settings.overspeed && r.vitesse && currentSpeed > (r.vitesse + 3);
+
+  if (isOverspeed) {
+    speedEl.classList.add('overspeed');
+    document.body.classList.add('car-overspeed');
+    block.classList.add('alert');
+  } else {
+    speedEl.classList.remove('overspeed');
+    document.body.classList.remove('car-overspeed');
+    if (d < 300) block.classList.add('alert');
+    else if (d < 800) block.classList.add('warning');
+  }
 
   document.getElementById('carRadarType').textContent = r.community ? prettyType(r.type) : r.type;
   if (d >= 1000) {
@@ -1008,11 +1202,17 @@ function updateCarUI() {
     document.getElementById('carRadarDist').textContent = Math.round(d);
     document.getElementById('carRadarUnit').textContent = 'm';
   }
+
   document.getElementById('carRadarInfo').textContent =
     [r.emplacement, r.route].filter(Boolean).join(' — ') || '—';
+
   if (r.vitesse) {
-    limitBlock.style.display = 'block';
+    limitsContainer.style.display = 'flex';
     document.getElementById('carLimit').textContent = r.vitesse;
+    if (r.vitesse_pl) {
+      limitPlBlock.style.display = 'block';
+      document.getElementById('carLimitPl').textContent = r.vitesse_pl;
+    }
   }
 }
 setInterval(() => { if (STATE.carMode) updateCarUI(); }, 1000);
@@ -1054,6 +1254,8 @@ function bindSwitch(id, key, onChange) {
   el.checked = STATE.settings[key];
   el.onchange = () => { STATE.settings[key] = el.checked; saveSettings(); if (onChange) onChange(el.checked); };
 }
+bindSwitch('swVoice', 'voice', (on) => { if (on) speakAlert('Annonces vocales activées'); });
+bindSwitch('swOverspeed', 'overspeed');
 bindSwitch('swSound', 'sound');
 bindSwitch('swVibrate', 'vibrate');
 bindSwitch('swNotif', 'notif', async (on) => {
@@ -1089,8 +1291,8 @@ document.getElementById('btnRefresh').onclick = async () => {
     const res = await loadRadars(true);
     renderMarkers();
     updateStats(res.date);
-    toast('Radars rechargés');
-  } catch (e) { toast('Erreur: ' + e.message); }
+    toast('Radars rechargés avec succès');
+  } catch (e) { toast('Erreur : ' + e.message); }
   hideLoader();
 };
 
@@ -1137,7 +1339,7 @@ if ('serviceWorker' in navigator) {
 // Boot
 (async function boot() {
   try {
-    setLoader('Chargement des radars…');
+    setLoader('Chargement des radars français…');
     const res = await loadRadars();
     renderMarkers();
     updateStats(res.date);
