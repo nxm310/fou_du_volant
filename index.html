@@ -1885,26 +1885,46 @@ function getGoogleDriveDownloadUrls(inputUrl) {
   const trimmed = inputUrl.trim();
   const urls = [];
 
+  // 1. Google Sheets (100% Native CORS direct from Google)
+  if (trimmed.includes('spreadsheets') || trimmed.includes('docs.google.com/spreadsheets')) {
+    const sheetIdMatch = trimmed.match(/\/spreadsheets\/d\/(?:e\/)?([a-zA-Z0-9_-]+)/) || trimmed.match(/[?&]key=([a-zA-Z0-9_-]+)/);
+    if (sheetIdMatch) {
+      const sheetId = sheetIdMatch[1];
+      if (trimmed.includes('/pub') || trimmed.includes('output=csv')) {
+        urls.push(trimmed);
+      }
+      urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`);
+      urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`);
+    } else {
+      urls.push(trimmed);
+    }
+    return urls;
+  }
+
+  // 2. Dropbox (Native CORS via dl.dropboxusercontent.com)
+  if (trimmed.includes('dropbox.com')) {
+    const dlUrl = trimmed.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/[?&]dl=\d/, '');
+    urls.push(dlUrl);
+    return urls;
+  }
+
+  // 3. GitHub Raw
+  if (trimmed.includes('github.com') && !trimmed.includes('raw.githubusercontent.com')) {
+    urls.push(trimmed.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/'));
+  }
+
+  // 4. Google Drive single file
   const fileIdMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
                       trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
                       trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
-
-  const isSheet = trimmed.includes('spreadsheets');
-
-  if (isSheet && fileIdMatch) {
-    const sheetId = fileIdMatch[1];
-    urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`);
-    urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`);
-  } else if (fileIdMatch) {
+  if (fileIdMatch && !trimmed.includes('/folders/')) {
     const fileId = fileIdMatch[1];
     urls.push(`https://drive.usercontent.google.com/download?id=${fileId}&export=download`);
     urls.push(`https://drive.google.com/uc?export=download&id=${fileId}`);
     urls.push(`https://docs.google.com/uc?export=download&id=${fileId}`);
-  } else if (trimmed.includes('dropbox.com')) {
-    urls.push(trimmed.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/[?&]dl=\d/, ''));
-  } else {
-    urls.push(trimmed);
   }
+
+  urls.push(trimmed);
   return urls;
 }
 
