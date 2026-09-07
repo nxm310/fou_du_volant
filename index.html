@@ -76,6 +76,7 @@
   }
   .icon-btn:active { transform: scale(0.92); }
   .icon-btn.on { background: var(--accent); border-color: var(--accent); }
+  .icon-btn.btn-report { background: rgba(255,69,58,0.2); border-color: rgba(255,69,58,0.4); color: var(--danger); }
 
   /* Map Alert bar */
   .alert-bar {
@@ -99,9 +100,7 @@
   .alert-distance { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
   .alert-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 
-  /* ============================================================
-     ULTRA-MODERN CAR COCKPIT / HUD
-     ============================================================ */
+  /* CAR COCKPIT / HUD */
   .car-mode {
     position: fixed; inset: 0; z-index: 1500;
     background: radial-gradient(circle at 50% 30%, #15161e 0%, #08080a 70%, #000000 100%);
@@ -115,7 +114,6 @@
   body.car-on .car-mode { display: flex; }
   body.car-on #map, body.car-on .topbar, body.car-on .alert-bar { display: none; }
 
-  /* Ambient Glow in Car Mode */
   .car-mode::before {
     content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
     width: 320px; height: 320px; border-radius: 50%;
@@ -136,7 +134,7 @@
     background: radial-gradient(circle, rgba(255, 69, 58, 0.6) 0%, rgba(255, 69, 58, 0) 70%);
   }
 
-  /* Cockpit Header (Current Road & Controls) */
+  /* Cockpit Header */
   .cockpit-header {
     display: flex; justify-content: space-between; align-items: center;
     gap: 10px; margin-bottom: 8px; z-index: 2;
@@ -172,15 +170,15 @@
   }
   .cockpit-btn:active { transform: scale(0.94); background: rgba(40, 40, 45, 0.9); }
   .cockpit-btn.voice-on { color: var(--accent); border-color: rgba(10, 132, 255, 0.3); }
+  .cockpit-btn.report-btn { color: var(--danger); border-color: rgba(255,69,58,0.4); background: rgba(255,69,58,0.15); }
 
-  /* Cockpit Main Grid */
+  /* Cockpit Main Body */
   .cockpit-body {
     flex: 1; display: flex; flex-direction: column;
     justify-content: space-around; align-items: center;
     gap: 10px; z-index: 2; width: 100%;
   }
 
-  /* Speedometer Central Gauge */
   .speed-cluster {
     display: flex; flex-direction: column; align-items: center;
     position: relative; width: 100%; padding: 6px 0;
@@ -209,7 +207,6 @@
     margin-left: 6px; letter-spacing: 0.5px;
   }
 
-  /* Speed Limits Display (Realistic French Traffic Sign) */
   .limits-row {
     display: flex; justify-content: center; align-items: center;
     gap: 14px; margin-top: 4px;
@@ -239,7 +236,7 @@
   .speed-delta-badge.over { background: rgba(255,69,58,0.2); color: var(--danger); display: inline-block; }
   .speed-delta-badge.under { background: rgba(48,209,88,0.2); color: var(--success); display: inline-block; }
 
-  /* Radar Ahead Futuristic Card */
+  /* Radar Ahead Card */
   .radar-ahead-card {
     width: 100%; max-width: 520px;
     background: var(--surface-card); backdrop-filter: blur(30px);
@@ -302,7 +299,6 @@
   }
   .radar-dist-unit-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
 
-  /* Approach Progress Bar */
   .radar-progress-track {
     width: 100%; height: 6px; background: rgba(255,255,255,0.1);
     border-radius: 3px; overflow: hidden;
@@ -316,7 +312,6 @@
     background: linear-gradient(90deg, var(--warning), var(--danger));
   }
 
-  /* Landscape Mode Optimization (Car vent mount) */
   @media (orientation: landscape) and (min-height: 380px) {
     .car-mode {
       padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 16px);
@@ -331,7 +326,7 @@
     .speed-number { font-size: clamp(80px, 32vw, 140px); }
   }
 
-  /* Panels, Dialogs & Utility Styles */
+  /* Panels & Dialogs */
   .panel-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     z-index: 900; opacity: 0; pointer-events: none;
@@ -358,6 +353,13 @@
   .row .sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
   .row .main { display: flex; flex-direction: column; flex: 1; }
 
+  .input-text {
+    width: 100%; background: #121214; border: 1px solid var(--border);
+    color: #ffffff; padding: 10px 14px; border-radius: 10px; font-size: 13px;
+    margin-top: 6px; outline: none;
+  }
+  .input-text:focus { border-color: var(--accent); }
+
   input[type="range"] { width: 100%; margin: 4px 0 12px; accent-color: var(--accent); }
 
   .switch { position: relative; width: 51px; height: 31px; flex-shrink: 0; }
@@ -380,6 +382,7 @@
   .btn:active { opacity: 0.7; }
   .btn:disabled { opacity: 0.35; }
   .btn.secondary { background: #222226; color: var(--text); }
+  .btn.danger { background: var(--danger); color: white; }
 
   /* Add dialog */
   .add-dialog {
@@ -430,11 +433,11 @@
   .leaflet-control-attribution a { color: var(--text-dim) !important; }
 
   .radar-icon {
-    width: 30px; height: 30px; border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 15px; font-weight: 700;
-    border: 2px solid rgba(255,255,255,0.9);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    color: white; font-size: 16px; font-weight: 700;
+    border: 2px solid rgba(255,255,255,0.95);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.7);
   }
   .radar-fixe { background: #ff3b30; }
   .radar-tourelle { background: #5856d6; }
@@ -485,6 +488,7 @@
     <div class="status-dot" id="statusDot"></div>
     <span id="statusText">Initialisation…</span>
   </div>
+  <button class="icon-btn btn-report" id="btnReportMap" title="Signaler un radar ou contrôle">🚨</button>
   <button class="icon-btn" id="btnCar" title="Mode voiture tête-haute">🚗</button>
   <button class="icon-btn" id="btnLocate" title="Me localiser">📍</button>
   <button class="icon-btn" id="btnSettings" title="Réglages">⚙︎</button>
@@ -502,7 +506,7 @@
 </div>
 
 <!-- ============================================================
-     NEW CAR COCKPIT (HUD)
+     CAR COCKPIT (HUD)
      ============================================================ -->
 <div class="car-mode" id="carMode">
   <!-- Header: Current Road & Actions -->
@@ -515,6 +519,7 @@
       </div>
     </div>
     <div class="cockpit-controls">
+      <button class="cockpit-btn report-btn" id="btnCarReport" title="Signaler un événement">🚨 Signaler</button>
       <button class="cockpit-btn voice-on" id="btnCarVoice" title="Annonces vocales">🗣️</button>
       <button class="cockpit-btn" id="btnExitCar">✕ Quitter</button>
     </div>
@@ -582,7 +587,7 @@
     <div class="stat"><div class="stat-val" id="statCommunity">—</div><div class="stat-lab">Communauté</div></div>
   </div>
 
-  <p class="loader-text" style="margin: 0 0 12px 2px;">💡 Tap long sur la carte pour signaler un événement</p>
+  <p class="loader-text" style="margin: 0 0 12px 2px;">💡 Bouton 🚨 ou tap long sur la carte pour signaler un événement</p>
 
   <h3>Filtrage Intelligent & Route</h3>
   <div class="row">
@@ -662,13 +667,21 @@
   <div class="row"><label>🎭 Cabines leurres / Itinéraires</label>
     <label class="switch"><input type="checkbox" class="flt" data-type="Itinéraire sécurisé / leurre" checked><span class="slider-sw"></span></label></div>
 
-  <h3>Communauté</h3>
+  <h3>Communauté & Serveur Supabase</h3>
   <div class="row">
     <div class="main">
-      <label>Radars communautaires</label>
-      <span class="sub" id="communityStatus">—</span>
+      <label>Afficher radars communautaires</label>
+      <span class="sub" id="communityStatus">Mode local / Supabase</span>
     </div>
     <label class="switch"><input type="checkbox" id="swCommunity" checked><span class="slider-sw"></span></label>
+  </div>
+  
+  <div style="background:#222226; border-radius:14px; padding:12px; margin-bottom:8px;">
+    <div style="font-size:13px; font-weight:700; margin-bottom:4px;">Configuration Supabase (Temps réel)</div>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:8px;">Synchronise les signalements entre tous les utilisateurs.</div>
+    <input type="text" class="input-text" id="cfgSupabaseUrl" placeholder="https://TON_PROJET.supabase.co">
+    <input type="text" class="input-text" id="cfgSupabaseKey" placeholder="anon key (eyJhbGciOi...)">
+    <button class="btn secondary" id="btnSaveSupabase" style="margin-top:10px; padding:10px; font-size:14px;">Tester & Enregistrer</button>
   </div>
 
   <h3>Données</h3>
@@ -683,9 +696,9 @@
   <p class="loader-text" id="addCoords">—</p>
   <div class="type-grid">
     <button class="type-btn" data-type="mobile"><span class="type-emoji">🚓</span>Radar mobile</button>
+    <button class="type-btn" data-type="controle"><span class="type-emoji">👮</span>Contrôle routier</button>
     <button class="type-btn" data-type="voiture_radar"><span class="type-emoji">🚙</span>Voiture-radar</button>
     <button class="type-btn" data-type="chantier"><span class="type-emoji">🚧</span>Radar chantier</button>
-    <button class="type-btn" data-type="controle"><span class="type-emoji">👮</span>Zone de contrôle</button>
     <button class="type-btn" data-type="danger"><span class="type-emoji">⚠️</span>Zone de danger</button>
     <button class="type-btn" data-type="nouveau"><span class="type-emoji">📡</span>Nouveau fixe</button>
   </div>
@@ -718,9 +731,10 @@ const DATA_GOUV_URL = 'https://www.data.gouv.fr/api/1/datasets/r/8a22b5a8-4b65-4
 const CORS_PROXY = 'https://corsproxy.io/?';
 const CACHE_KEY = 'radars_cache_v2';
 const CACHE_TTL = 7 * 24 * 3600 * 1000;
+const COMMUNITY_STORAGE_KEY = 'community_radars_local_v1';
 
-const SUPABASE_URL = window.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
+let SUPABASE_URL = localStorage.getItem('supabase_url') || window.SUPABASE_URL || '';
+let SUPABASE_ANON_KEY = localStorage.getItem('supabase_anon_key') || window.SUPABASE_ANON_KEY || '';
 
 const CAR_ON = 30 / 3.6;    // m/s
 const CAR_OFF = 10 / 3.6;
@@ -738,7 +752,7 @@ const STATE = {
   lastPositions: [], accuracyCircle: null,
   lastAlertId: null, lastAlertTime: 0, lastSpeechTime: 0, lastSpeechText: '',
   followUser: true, carMode: false, carModeTimer: null,
-  wakeLock: null, supabase: null, addPending: null, userId: null,
+  wakeLock: null, supabase: null, realtimeChannel: null, addPending: null, userId: null,
   currentRoad: { name: '', ref: '', fullName: '', lastUpdated: 0, lat: 0, lng: 0 },
   settings: loadSettings()
 };
@@ -778,7 +792,7 @@ function saveSettings() { localStorage.setItem('radars_settings_v4', JSON.string
 function normalizeRoad(str) {
   if (!str) return '';
   return str.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/route\s+(departementale|nationale)/g, '')
     .replace(/\s+/g, '')
     .replace(/[^a-z0-9]/g, '')
@@ -804,7 +818,6 @@ async function detectCurrentRoad(lat, lng) {
       const wp = data.waypoints[0];
       const rawName = wp.name || '';
       
-      // Extraction de la référence de route (A6, D950, N88, etc.)
       const refMatch = rawName.match(/\b([A|N|D]\s?\d{1,4}[A-Z]?)\b/i) ||
                        rawName.match(/\b(RD\s?\d{1,4}|RN\s?\d{1,4})\b/i);
       const roadRef = refMatch ? refMatch[0].toUpperCase().replace(/\s+/g, '') : '';
@@ -816,9 +829,7 @@ async function detectCurrentRoad(lat, lng) {
 
       updateRoadUI();
     }
-  } catch (e) {
-    // Silently continue with previous known road
-  }
+  } catch (e) {}
 }
 
 function updateRoadUI() {
@@ -838,7 +849,6 @@ function isRadarOnCurrentRoute(r, userPos, heading, speed) {
   const threshold = STATE.settings.distance;
   if (d >= threshold) return { match: false };
 
-  // Angle difference between user heading and radar direction
   let angleDelta = 0;
   if (heading !== null && speed > 2) {
     const b = bearing(userPos.lat, userPos.lng, r.lat, r.lng);
@@ -846,20 +856,17 @@ function isRadarOnCurrentRoute(r, userPos, heading, speed) {
     if (angleDelta > FRONT_ANGLE) return { match: false };
   }
 
-  // Cross-track distance (lateral error perpendicular to vehicle trajectory)
   const angleRad = (angleDelta * Math.PI) / 180;
   const crossTrackDist = Math.abs(d * Math.sin(angleRad));
   const alongTrackDist = Math.max(1, d * Math.cos(angleRad));
 
-  // Thresholds based on vehicle speed
   const speedKmh = speed * 3.6;
-  const maxCrossTrack = speedKmh > 70 ? 45 : 35; // tighter in town, highway tolerance
+  const maxCrossTrack = speedKmh > 70 ? 45 : 35;
 
   if (speed > 2 && crossTrackDist > maxCrossTrack) {
     return { match: false };
   }
 
-  // Smart route name matching
   let isStrictMatch = false;
   if (STATE.settings.strictRoad && STATE.currentRoad.name && r.route) {
     const normUserRoad = normalizeRoad(STATE.currentRoad.name);
@@ -878,7 +885,7 @@ function isRadarOnCurrentRoute(r, userPos, heading, speed) {
 }
 
 // ============================================================
-//  VOICE / TTS (Web Speech API)
+//  VOICE / TTS
 // ============================================================
 let synthVoice = null;
 function initVoice() {
@@ -917,79 +924,190 @@ function speakAlert(text, isUrgent = false) {
 }
 
 // ============================================================
-//  SUPABASE
+//  COMMUNITY & SUPABASE STORAGE
 // ============================================================
+function loadLocalCommunity() {
+  try {
+    const raw = localStorage.getItem(COMMUNITY_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch { return []; }
+}
+
+function saveLocalCommunity(items) {
+  localStorage.setItem(COMMUNITY_STORAGE_KEY, JSON.stringify(items));
+}
+
+function initDemoCommunityIfEmpty() {
+  let local = loadLocalCommunity();
+  if (local.length === 0) {
+    // Seed standard demonstration alerts in key regions
+    local = [
+      { id: 'c_demo1', cId: 'demo1', lat: 48.8566, lng: 2.3522, type: 'controle', emplacement: 'Quai de Bercy — Paris', votes: 3, created_at: new Date().toISOString(), community: true },
+      { id: 'c_demo2', cId: 'demo2', lat: 45.7640, lng: 4.8357, type: 'mobile', emplacement: 'A6 Sortie Lyon', votes: 5, created_at: new Date().toISOString(), community: true },
+      { id: 'c_demo3', cId: 'demo3', lat: 43.6047, lng: 1.4442, type: 'voiture_radar', emplacement: 'Périphérique Toulouse', votes: 2, created_at: new Date().toISOString(), community: true }
+    ];
+    saveLocalCommunity(local);
+  }
+  return local;
+}
+
 function initSupabase() {
   const statusEl = document.getElementById('communityStatus');
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    statusEl.textContent = 'Non configuré — voir README';
+  const cfgUrlInput = document.getElementById('cfgSupabaseUrl');
+  const cfgKeyInput = document.getElementById('cfgKeyInput');
+  
+  if (cfgUrlInput) cfgUrlInput.value = SUPABASE_URL;
+  if (cfgKeyInput) cfgKeyInput.value = SUPABASE_ANON_KEY;
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TON_PROJET') || !SUPABASE_URL.startsWith('http')) {
+    statusEl.textContent = 'Mode local actif (Supabase non configuré)';
+    STATE.community = initDemoCommunityIfEmpty();
+    document.getElementById('statCommunity').textContent = STATE.community.length;
+    renderCommunityMarkers();
     return false;
   }
+
   const _createClient = (window.supabase && window.supabase.createClient)
     || (window.supabaseJs && window.supabaseJs.createClient);
   if (!_createClient) {
-    statusEl.textContent = 'Librairie Supabase non disponible';
+    statusEl.textContent = 'Librairie Supabase non disponible — Mode local actif';
+    STATE.community = initDemoCommunityIfEmpty();
+    renderCommunityMarkers();
     return false;
   }
+
   try {
     STATE.supabase = _createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    statusEl.textContent = 'Connecté — tap long pour signaler';
+    statusEl.textContent = 'Connecté à Supabase (Temps réel)';
+    setupRealtime();
     return true;
   } catch (e) {
-    statusEl.textContent = 'Erreur de connexion';
+    statusEl.textContent = 'Erreur connexion Supabase — Mode local';
+    STATE.community = initDemoCommunityIfEmpty();
+    renderCommunityMarkers();
     return false;
   }
+}
+
+function setupRealtime() {
+  if (!STATE.supabase) return;
+  try {
+    if (STATE.realtimeChannel) STATE.supabase.removeChannel(STATE.realtimeChannel);
+    STATE.realtimeChannel = STATE.supabase
+      .channel('public:community_radars')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_radars' }, payload => {
+        if (payload.eventType === 'INSERT') {
+          const newRadar = payload.new;
+          if (newRadar && newRadar.active) {
+            toast(`🚨 Nouveau signalement : ${prettyType(newRadar.kind)} !`);
+            speakAlert(`Nouveau signalement : ${prettyType(newRadar.kind)}`);
+          }
+        }
+        if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
+      })
+      .subscribe();
+  } catch (e) { console.warn('Realtime subscription error:', e); }
 }
 
 async function loadCommunityRadars(lat, lng) {
-  if (!STATE.supabase || !STATE.settings.community) return;
-  try {
-    const dLat = COMMUNITY_RADIUS_KM / 111;
-    const dLng = dLat / Math.max(0.1, Math.cos(lat * Math.PI / 180));
-    const { data, error } = await STATE.supabase
-      .from('community_radars')
-      .select('*')
-      .gte('lat', lat - dLat).lte('lat', lat + dLat)
-      .gte('lng', lng - dLng).lte('lng', lng + dLng)
-      .eq('active', true)
-      .order('created_at', { ascending: false }).limit(500);
-    if (error) throw error;
-    STATE.community = (data || []).map(r => ({
-      id: 'c_' + r.id, cId: r.id,
-      lat: parseFloat(r.lat), lng: parseFloat(r.lng),
-      type: r.kind, emplacement: r.note || '',
-      votes: r.votes ?? 0, created_at: r.created_at, community: true
-    }));
-    document.getElementById('statCommunity').textContent = STATE.community.length;
-    renderCommunityMarkers();
-  } catch (e) { console.error('Community load:', e); }
+  if (!STATE.settings.community) return;
+  let remoteRadars = [];
+
+  if (STATE.supabase) {
+    try {
+      const dLat = COMMUNITY_RADIUS_KM / 111;
+      const dLng = dLat / Math.max(0.1, Math.cos(lat * Math.PI / 180));
+      const { data, error } = await STATE.supabase
+        .from('community_radars')
+        .select('*')
+        .gte('lat', lat - dLat).lte('lat', lat + dLat)
+        .gte('lng', lng - dLng).lte('lng', lng + dLng)
+        .eq('active', true)
+        .order('created_at', { ascending: false }).limit(500);
+      
+      if (!error && data) {
+        remoteRadars = data.map(r => ({
+          id: 'c_' + r.id, cId: r.id,
+          lat: parseFloat(r.lat), lng: parseFloat(r.lng),
+          type: r.kind, emplacement: r.note || '',
+          votes: r.votes ?? 0, created_at: r.created_at, community: true
+        }));
+      }
+    } catch (e) { console.warn('Supabase fetch error, fallback local:', e); }
+  }
+
+  // Merge with local storage reports
+  const localRadars = loadLocalCommunity();
+  const mapUnique = new Map();
+  [...localRadars, ...remoteRadars].forEach(r => mapUnique.set(r.id, r));
+  
+  STATE.community = Array.from(mapUnique.values());
+  document.getElementById('statCommunity').textContent = STATE.community.length;
+  renderCommunityMarkers();
 }
 
 async function addCommunityRadar(lat, lng, kind, note = '') {
-  if (!STATE.supabase) { toast('Supabase non configuré — voir README'); return false; }
-  try {
-    const { error } = await STATE.supabase.from('community_radars').insert({
-      lat, lng, kind, note, user_id: STATE.userId, active: true, votes: 1
-    });
-    if (error) throw error;
-    toast('Signalement envoyé, merci !');
-    if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
-    return true;
-  } catch (e) { toast('Erreur : ' + e.message); return false; }
+  const newReport = {
+    id: 'c_loc_' + Date.now(),
+    cId: Date.now(),
+    lat, lng,
+    type: kind,
+    emplacement: note || STATE.currentRoad.fullName || 'Signalé par un utilisateur',
+    votes: 1,
+    created_at: new Date().toISOString(),
+    community: true
+  };
+
+  // 1. Save locally immediately
+  const localList = loadLocalCommunity();
+  localList.unshift(newReport);
+  saveLocalCommunity(localList);
+
+  STATE.community.unshift(newReport);
+  renderCommunityMarkers();
+  toast(`Signalement "${prettyType(kind)}" enregistré !`);
+  speakAlert(`Signalement ${prettyType(kind)} enregistré, merci !`);
+
+  // 2. Sync to Supabase if connected
+  if (STATE.supabase) {
+    try {
+      const { error } = await STATE.supabase.from('community_radars').insert({
+        lat, lng, kind, note: newReport.emplacement, user_id: STATE.userId, active: true, votes: 1
+      });
+      if (error) throw error;
+      toast('Signalement synchronisé avec la communauté !');
+    } catch (e) {
+      console.warn('Supabase insert failed:', e);
+    }
+  }
+  return true;
 }
 
 async function voteRadar(cId, delta) {
-  if (!STATE.supabase) return;
-  try {
-    const { error } = await STATE.supabase.rpc('vote_radar', {
-      radar_id: cId,
-      delta: delta,
-      p_user_id: STATE.userId
-    });
-    if (error) throw error;
-    toast(delta > 0 ? 'Confirmé 👍' : 'Signalé absent 👎');
-    if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
-  } catch (e) { toast('Erreur vote'); }
+  toast(delta > 0 ? 'Signalement confirmé 👍' : 'Signalé absent 👎');
+  
+  // Local vote update
+  const localList = loadLocalCommunity();
+  const target = localList.find(x => x.cId == cId || x.id == cId);
+  if (target) {
+    target.votes = (target.votes || 1) + delta;
+    if (target.votes < -2) target.active = false;
+    saveLocalCommunity(localList);
+  }
+
+  // Remote vote
+  if (STATE.supabase && typeof cId === 'number') {
+    try {
+      await STATE.supabase.rpc('vote_radar', {
+        radar_id: cId,
+        delta: delta,
+        p_user_id: STATE.userId
+      });
+    } catch (e) {}
+  }
+  
+  if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
 }
 window._voteRadar = voteRadar;
 
@@ -1003,6 +1121,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19, attribution: '© OpenStreetMap'
 }).addTo(map);
 map.on('dragstart', () => { STATE.followUser = false; });
+map.on('moveend', () => {
+  const center = map.getCenter();
+  loadCommunityRadars(center.lat, center.lng);
+});
 
 let tapTimer = null, tapStart = null;
 function onTapStart(e) {
@@ -1113,7 +1235,7 @@ function typeInfo(t) {
   if (t === 'chantier' || t.includes('chantier') || t.includes('autonome'))
     return { cls: 'radar-chantier', icon: '🚧', label: 'Radar autonome / chantier' };
   if (t === 'nouveau') return { cls: 'radar-community', icon: '📡', label: 'Nouveau radar' };
-  if (t === 'controle') return { cls: 'radar-controle', icon: '👮', label: 'Zone de contrôle' };
+  if (t === 'controle') return { cls: 'radar-controle', icon: '👮', label: 'Contrôle routier' };
   if (t === 'danger') return { cls: 'radar-danger', icon: '⚠️', label: 'Zone de danger' };
   if (t.includes('tourelle')) return { cls: 'radar-tourelle', icon: '🗼', label: 'Radar tourelle' };
   if (t.includes('discriminant')) return { cls: 'radar-discriminant', icon: '🚛', label: 'Radar discriminant' };
@@ -1132,7 +1254,7 @@ function prettyType(t) { return typeInfo(t).label; }
 function makeIcon(r) {
   const info = typeInfo(r.type);
   return L.divIcon({
-    className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+    className: '', iconSize: [32, 32], iconAnchor: [16, 16],
     html: `<div class="radar-icon ${info.cls}">${info.icon}</div>`
   });
 }
@@ -1169,10 +1291,10 @@ function renderCommunityMarkers() {
     const info = typeInfo(r.type);
     const popup = `<strong>${info.icon} ${prettyType(r.type)}</strong>
       ${r.emplacement ? `<span class="muted">${r.emplacement}</span>` : ''}
-      <span class="muted">Signalé il y a ${ageStr} · ${r.votes} confirmation(s)</span>
+      <span class="muted">Signalé il y a ${ageStr} · ${r.votes || 1} confirmation(s)</span>
       <div class="vote-row">
-        <button class="vote-btn" onclick="window._voteRadar(${r.cId}, 1)">👍 Toujours là</button>
-        <button class="vote-btn" onclick="window._voteRadar(${r.cId}, -1)">👎 Absent</button>
+        <button class="vote-btn" onclick="window._voteRadar('${r.cId || r.id}', 1)">👍 Toujours là</button>
+        <button class="vote-btn" onclick="window._voteRadar('${r.cId || r.id}', -1)">👎 Absent</button>
       </div>`;
     marker.bindPopup(popup); marker.addTo(map);
     STATE.communityMarkers.push(marker);
@@ -1254,7 +1376,6 @@ function onPos(p) {
     if (STATE.followUser) map.panTo(latlng);
   }
 
-  // Detect current road
   detectCurrentRoad(latitude, longitude);
 
   if (STATE.community.length && STATE.userPos) {
@@ -1287,7 +1408,6 @@ function findNearestRadarAhead() {
     const res = isRadarOnCurrentRoute(r, STATE.userPos, STATE.userHeading, STATE.userSpeed);
     if (!res.match) continue;
 
-    // Prioritize strict route match, then distance
     const weight = res.isStrictMatch ? res.d * 0.7 : res.d;
     if (!best || weight < best.weight) {
       best = { r, d: res.d, isStrictMatch: res.isStrictMatch, weight };
@@ -1498,7 +1618,6 @@ function updateCarUI() {
   const info = typeInfo(r.type);
   const isOverspeed = STATE.settings.overspeed && r.vitesse && currentSpeed > (r.vitesse + 3);
 
-  // Status & Glowing themes
   if (isOverspeed) {
     document.body.classList.add('car-overspeed');
     speedEl.classList.add('overspeed');
@@ -1514,7 +1633,6 @@ function updateCarUI() {
     }
   }
 
-  // Populate Radar Card
   document.getElementById('carCardIcon').textContent = info.icon || '⚠️';
   document.getElementById('carCardType').textContent = r.community ? prettyType(r.type) : r.type;
   document.getElementById('carCardLocation').textContent = [r.emplacement, r.route].filter(Boolean).join(' — ') || 'Radar détecté';
@@ -1524,7 +1642,6 @@ function updateCarUI() {
   axisTag.style.display = 'block';
   axisTag.textContent = isStrictMatch ? '🎯 SUR VOTRE AXE' : '📡 DEVANT VOUS';
 
-  // Distance formatting
   if (d >= 1000) {
     document.getElementById('carCardDist').textContent = (d / 1000).toFixed(1);
     document.getElementById('carCardUnit').textContent = 'km';
@@ -1533,12 +1650,10 @@ function updateCarUI() {
     document.getElementById('carCardUnit').textContent = 'm';
   }
 
-  // Progress Bar (closer = fuller)
   const maxRange = STATE.settings.distance;
   const progressPercent = Math.max(5, Math.min(100, Math.round((1 - (d / maxRange)) * 100)));
   progressBar.style.width = `${progressPercent}%`;
 
-  // Traffic Signs
   if (r.vitesse) {
     limitSign.style.display = 'flex';
     document.getElementById('carLimitVal').textContent = r.vitesse;
@@ -1550,7 +1665,6 @@ function updateCarUI() {
       limitPlSign.style.display = 'none';
     }
 
-    // Delta Speed Indicator
     const delta = currentSpeed - r.vitesse;
     deltaBadge.style.display = 'inline-block';
     deltaBadge.classList.remove('over', 'under');
@@ -1574,6 +1688,15 @@ setInterval(() => { if (STATE.carMode) updateCarUI(); }, 1000);
 // ============================================================
 //  UI INTERACTIONS
 // ============================================================
+function triggerQuickReport() {
+  const lat = STATE.userPos ? STATE.userPos.lat : map.getCenter().lat;
+  const lng = STATE.userPos ? STATE.userPos.lng : map.getCenter().lng;
+  openAddDialog(lat, lng);
+}
+
+document.getElementById('btnReportMap').onclick = triggerQuickReport;
+document.getElementById('btnCarReport').onclick = triggerQuickReport;
+
 document.getElementById('btnLocate').onclick = () => {
   STATE.followUser = true;
   if (STATE.userPos) map.setView([STATE.userPos.lat, STATE.userPos.lng], 15);
@@ -1656,6 +1779,18 @@ document.querySelectorAll('.flt').forEach(el => {
   };
 });
 
+document.getElementById('btnSaveSupabase').onclick = () => {
+  const url = document.getElementById('cfgSupabaseUrl').value.trim();
+  const key = document.getElementById('cfgSupabaseKey').value.trim();
+  if (url) localStorage.setItem('supabase_url', url);
+  if (key) localStorage.setItem('supabase_anon_key', key);
+  SUPABASE_URL = url;
+  SUPABASE_ANON_KEY = key;
+  initSupabase();
+  if (STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
+  toast('Paramètres Supabase mis à jour');
+};
+
 document.getElementById('btnRefresh').onclick = async () => {
   document.getElementById('loader').classList.remove('hide');
   try {
@@ -1670,9 +1805,9 @@ document.getElementById('btnRefresh').onclick = async () => {
 // Add radar dialog
 const addDialog = document.getElementById('addDialog');
 function openAddDialog(lat, lng) {
-  if (!STATE.supabase) { toast('Supabase non configuré — voir README'); return; }
   STATE.addPending = { lat, lng, type: null };
-  document.getElementById('addCoords').textContent = `Position : ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  const roadLabel = STATE.currentRoad.fullName ? ` · ${STATE.currentRoad.fullName}` : '';
+  document.getElementById('addCoords').textContent = `Position : ${lat.toFixed(5)}, ${lng.toFixed(5)}${roadLabel}`;
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
   document.getElementById('btnConfirmAdd').disabled = true;
   addDialog.classList.add('show');
