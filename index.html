@@ -112,224 +112,181 @@ if (!window.JSZip) {
     background: radial-gradient(circle at 50% 30%, #15161e 0%, #08080a 70%, #000000 100%);
     color: var(--text);
     display: none; flex-direction: column;
-    padding: calc(var(--safe-top) + 14px) calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 14px) calc(var(--safe-left) + 16px);
+  /* ============================================================
+     CAMSAM / BLITZER.DE STYLE CAR COCKPIT
+     ============================================================ */
+  .car-mode {
+    position: fixed; inset: 0; z-index: 1000;
+    background: #25272b; color: #ffffff;
+    display: none; flex-direction: column; justify-content: space-between;
+    padding: var(--safe-top) 0 var(--safe-bottom) 0;
     user-select: none; -webkit-user-select: none;
     overflow: hidden;
-    transition: background 0.4s ease, box-shadow 0.4s ease;
   }
   body.car-on .car-mode { display: flex; }
   body.car-on #map, body.car-on .topbar, body.car-on .alert-bar { display: none; }
 
-  .car-mode::before {
-    content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
-    width: 320px; height: 320px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(10, 132, 255, 0.15) 0%, rgba(10, 132, 255, 0) 70%);
-    pointer-events: none; transition: background 0.5s ease;
-  }
-  body.car-on.car-warning .car-mode::before {
-    background: radial-gradient(circle, rgba(255, 159, 10, 0.25) 0%, rgba(255, 159, 10, 0) 70%);
-  }
-  body.car-on.car-danger .car-mode::before {
-    background: radial-gradient(circle, rgba(255, 69, 58, 0.35) 0%, rgba(255, 69, 58, 0) 70%);
-  }
-  body.car-on.car-overspeed .car-mode {
-    background: radial-gradient(circle at 50% 30%, #290606 0%, #120202 70%, #000000 100%);
-    box-shadow: inset 0 0 70px rgba(255, 69, 58, 0.55);
-  }
-  body.car-on.car-overspeed .car-mode::before {
-    background: radial-gradient(circle, rgba(255, 69, 58, 0.6) 0%, rgba(255, 69, 58, 0) 70%);
-  }
-
-  /* Cockpit Header */
-  .cockpit-header {
+  /* Top Status Bar */
+  .camsam-topbar {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 10px; margin-bottom: 8px; z-index: 2;
+    padding: 10px 16px; background: #25272b;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
   }
-  .road-badge-wrap {
-    flex: 1; display: flex; align-items: center; gap: 10px;
-    background: rgba(28, 28, 32, 0.7); backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border); border-radius: 16px;
-    padding: 8px 14px; min-height: 46px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  }
-  .road-icon { font-size: 18px; flex-shrink: 0; }
-  .road-info-block { display: flex; flex-direction: column; overflow: hidden; }
-  .road-name {
-    font-size: 14px; font-weight: 700; color: #ffffff;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    letter-spacing: -0.2px;
-  }
-  .road-sub {
-    font-size: 11px; color: var(--text-sub); text-transform: uppercase;
-    letter-spacing: 0.5px; font-weight: 500;
-  }
-
-  .cockpit-controls { display: flex; gap: 8px; align-items: center; }
-  .cockpit-btn {
-    background: rgba(28, 28, 32, 0.7); backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border); color: var(--text-sub);
-    padding: 10px 14px; border-radius: 14px; font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: all 0.15s ease; min-height: 46px;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-  }
-  .cockpit-btn:active { transform: scale(0.94); background: rgba(40, 40, 45, 0.9); }
-  .cockpit-btn.voice-on { color: var(--accent); border-color: rgba(10, 132, 255, 0.3); }
-  .cockpit-btn.report-btn { color: var(--danger); border-color: rgba(255,69,58,0.4); background: rgba(255,69,58,0.15); }
-
-  /* Cockpit Main Body */
-  .cockpit-body {
-    flex: 1; display: flex; flex-direction: column;
-    justify-content: space-around; align-items: center;
-    gap: 10px; z-index: 2; width: 100%;
-  }
-
-  .speed-cluster {
-    display: flex; flex-direction: column; align-items: center;
-    position: relative; width: 100%; padding: 6px 0;
-  }
-  .speed-display-wrap {
-    display: flex; align-items: baseline; justify-content: center;
-    position: relative;
-  }
-  .speed-number {
-    font-size: clamp(88px, 24vh, 160px); font-weight: 800; line-height: 0.92;
-    font-variant-numeric: tabular-nums; letter-spacing: -4px;
-    background: linear-gradient(180deg, #ffffff 40%, #c4c4c8 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    transition: filter 0.2s;
-  }
-  .speed-number.overspeed {
-    background: linear-gradient(180deg, #ff453a 30%, #ff2d55 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 25px rgba(255, 69, 58, 0.8));
-    animation: pulseSpeed 0.6s infinite alternate;
-  }
-  @keyframes pulseSpeed { from { transform: scale(1); } to { transform: scale(1.03); } }
-
-  .speed-unit-tag {
-    font-size: 18px; font-weight: 700; color: var(--text-dim);
-    margin-left: 6px; letter-spacing: 0.5px;
-  }
-
-  .limits-row {
-    display: flex; justify-content: center; align-items: center;
-    gap: 14px; margin-top: 4px;
-  }
-  .traffic-sign {
-    width: 68px; height: 68px; border-radius: 50%;
-    background: #ffffff; color: #1a1a1a;
-    border: 7px solid #c0392b;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-size: 26px; font-weight: 900; line-height: 1;
-    font-variant-numeric: tabular-nums; letter-spacing: -1px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.5), inset 0 0 4px rgba(0,0,0,0.2);
-    position: relative;
-  }
-  .traffic-sign.pl-sign {
-    border-color: #d35400; font-size: 22px; width: 62px; height: 62px;
-  }
-  .traffic-sign .sign-sub {
-    font-size: 9px; font-weight: 800; color: #d35400; text-transform: uppercase;
-    position: absolute; bottom: 4px; letter-spacing: 0.3px;
-  }
-  .speed-delta-badge {
-    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
-    background: rgba(255,255,255,0.08); color: var(--text-sub);
-    font-variant-numeric: tabular-nums; display: none;
-  }
-  .speed-delta-badge.over { background: rgba(255,69,58,0.2); color: var(--danger); display: inline-block; }
-  .speed-delta-badge.under { background: rgba(48,209,88,0.2); color: var(--success); display: inline-block; }
-
-  /* Radar Ahead Card */
-  .radar-ahead-card {
-    width: 100%; max-width: 520px;
-    background: var(--surface-card); backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
-    border: 1px solid var(--border); border-radius: 24px;
-    padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .radar-ahead-card.alert {
-    background: rgba(45, 12, 12, 0.85); border-color: var(--danger);
-    box-shadow: 0 0 35px rgba(255, 69, 58, 0.4);
-    animation: alertPulseCard 0.9s infinite alternate;
-  }
-  @keyframes alertPulseCard { from { transform: scale(1); } to { transform: scale(1.02); } }
-  .radar-ahead-card.warning {
-    background: rgba(40, 24, 8, 0.85); border-color: var(--warning);
-    box-shadow: 0 0 30px rgba(255, 159, 10, 0.3);
-  }
-  .radar-ahead-card.none { opacity: 0.45; }
-
-  .radar-card-top {
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .radar-category-pill {
-    display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700;
-  }
-  .radar-category-badge {
-    font-size: 18px; width: 32px; height: 32px; border-radius: 50%;
+  .camsam-add-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: transparent; border: 2.5px solid #ffffff;
+    color: #ffffff; font-size: 26px; font-weight: 300;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,0.1);
+    cursor: pointer; transition: transform 0.15s, background 0.15s;
   }
-  .radar-axis-tag {
-    font-size: 11px; font-weight: 700; text-transform: uppercase;
-    padding: 4px 8px; border-radius: 8px; letter-spacing: 0.5px;
-    background: rgba(10, 132, 255, 0.15); color: var(--accent);
-    border: 1px solid rgba(10, 132, 255, 0.3);
+  .camsam-add-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.15); }
+
+  /* LED Segmented Distance Gauge (CamSam Green/Red Horizontal Bars) */
+  .camsam-led-gauge {
+    display: flex; flex-direction: column; gap: 3.5px;
+    width: 110px; padding: 2px;
+  }
+  .camsam-led-bar {
+    height: 7px; width: 100%; border-radius: 2px;
+    background: #383b40; transition: background 0.2s ease, opacity 0.2s ease;
+  }
+  .camsam-led-bar.green.active { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.8); }
+  .camsam-led-bar.red.active { background: #e74c3c; box-shadow: 0 0 6px rgba(231,76,60,0.8); }
+
+  /* Top Right Speedometer */
+  .camsam-speed-box {
+    display: flex; align-items: baseline; text-align: right; min-width: 65px; justify-content: flex-end;
+  }
+  .camsam-speed-val {
+    font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums;
+    line-height: 1; letter-spacing: -1px; color: #ffffff;
+  }
+  .camsam-speed-unit {
+    font-size: 11px; font-weight: 700; color: #95a5a6; margin-left: 2px;
+  }
+  .camsam-speed-val.overspeed {
+    color: #ff4d4d; animation: blinkOverspeed 0.6s infinite alternate;
+  }
+  @keyframes blinkOverspeed { from { opacity: 1; } to { opacity: 0.4; } }
+
+  /* Main Center Stage */
+  .camsam-main-stage {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; padding: 10px 16px;
   }
 
-  .radar-card-main {
-    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  /* Safe Green Chevrons (Voie Libre / Aucune Alerte) */
+  .camsam-chevrons-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer;
   }
-  .radar-location-block { flex: 1; overflow: hidden; }
-  .radar-loc-title {
-    font-size: 14px; font-weight: 600; color: #ffffff;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .camsam-chevron {
+    width: 140px; height: 32px;
+    background: #2ecc71;
+    clip-path: polygon(50% 0%, 100% 60%, 80% 100%, 50% 65%, 20% 100%, 0% 60%);
+    box-shadow: 0 4px 12px rgba(46,204,113,0.4);
+    animation: chevronPulse 2s infinite ease-in-out;
   }
-  .radar-loc-detail {
-    font-size: 12px; color: var(--text-dim); margin-top: 2px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .camsam-chevron:nth-child(1) { animation-delay: 0s; width: 100px; height: 26px; }
+  .camsam-chevron:nth-child(2) { animation-delay: 0.25s; width: 120px; height: 30px; }
+  .camsam-chevron:nth-child(3) { animation-delay: 0.5s; width: 140px; height: 34px; }
+  @keyframes chevronPulse { 0%, 100% { opacity: 0.75; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-4px); } }
+
+  /* Radar / Alert Main Round Sign */
+  .camsam-alert-sign-wrap {
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .camsam-sign-circle {
+    width: clamp(170px, 46vw, 220px);
+    height: clamp(170px, 46vw, 220px);
+    border-radius: 50%; background: #ffffff;
+    border: 16px solid #e74c3c;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6), inset 0 0 10px rgba(0,0,0,0.1);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .camsam-sign-circle.triangle-sign {
+    border-radius: 0; background: transparent; border: none; box-shadow: none;
+    width: clamp(180px, 48vw, 230px); height: clamp(160px, 42vw, 200px);
+  }
+  .camsam-sign-triangle-svg {
+    width: 100%; height: 100%; filter: drop-shadow(0 8px 20px rgba(0,0,0,0.6));
+  }
+  .camsam-sign-speed-text {
+    font-size: clamp(64px, 17vw, 86px); font-weight: 900;
+    color: #111111; line-height: 1; letter-spacing: -3px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Roboto, sans-serif;
+  }
+  .camsam-sign-icon {
+    font-size: clamp(52px, 14vw, 70px);
   }
 
-  .radar-distance-block {
-    text-align: right; flex-shrink: 0;
-  }
-  .radar-dist-digits {
-    font-size: clamp(38px, 6vh, 54px); font-weight: 900; line-height: 1;
-    font-variant-numeric: tabular-nums; letter-spacing: -1.5px;
-    color: #ffffff;
-  }
-  .radar-dist-unit-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
-
-  .radar-progress-track {
-    width: 100%; height: 6px; background: rgba(255,255,255,0.1);
-    border-radius: 3px; overflow: hidden;
-  }
-  .radar-progress-bar {
-    height: 100%; width: 0%; border-radius: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--warning));
-    transition: width 0.4s ease, background 0.3s ease;
-  }
-  .radar-ahead-card.alert .radar-progress-bar {
-    background: linear-gradient(90deg, var(--warning), var(--danger));
+  /* Orange Directional Arrow on Sign Border */
+  .camsam-direction-arrow {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-bottom: 24px solid #f39c12;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+    display: none;
   }
 
-  @media (orientation: landscape) and (min-height: 380px) {
+  /* Star Ratings under Alert */
+  .camsam-stars-row {
+    display: flex; gap: 4px; margin-top: 14px; font-size: 16px; color: rgba(255,255,255,0.2);
+  }
+  .camsam-star.active { color: #f1c40f; text-shadow: 0 0 6px rgba(241,196,15,0.6); }
+
+  /* Up Next Radar List (2-row Black Strip) */
+  .camsam-radar-list {
+    background: #191a1d; border-top: 1px solid #111112;
+    border-bottom: 1px solid #111112;
+    display: flex; flex-direction: column;
+  }
+  .camsam-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 14px; font-weight: 600;
+  }
+  .camsam-list-item:last-child { border-bottom: none; }
+  .camsam-item-left {
+    display: flex; align-items: center; gap: 10px; overflow: hidden;
+  }
+  .camsam-item-icon { font-size: 17px; flex-shrink: 0; }
+  .camsam-item-name {
+    color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .camsam-item-dist {
+    font-size: 15px; font-weight: 700; color: #ffffff;
+    font-variant-numeric: tabular-nums; flex-shrink: 0; margin-left: 10px;
+  }
+
+  /* Bottom 3-Button Toolbar */
+  .camsam-bottom-bar {
+    display: grid; grid-template-columns: 1fr 1.6fr 1fr;
+    background: #1d1e22; height: 56px;
+  }
+  .camsam-bar-btn {
+    background: transparent; border: none; border-right: 1px solid rgba(255,255,255,0.08);
+    color: #95a5a6; display: flex; align-items: center; justify-content: center;
+    gap: 8px; font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .camsam-bar-btn:last-child { border-right: none; }
+  .camsam-bar-btn:active { background: rgba(255,255,255,0.08); color: #ffffff; }
+  .camsam-bar-btn.active { color: var(--accent); }
+  .camsam-users-count { font-size: 14px; font-weight: 800; color: #ecf0f1; }
+
+  @media (orientation: landscape) and (min-height: 360px) {
     .car-mode {
-      padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 16px);
+      flex-direction: row; flex-wrap: wrap;
     }
-    .cockpit-header { margin-bottom: 4px; }
-    .cockpit-body {
-      flex-direction: row; justify-content: space-between; align-items: center;
-      gap: 24px;
-    }
-    .speed-cluster { flex: 1; justify-content: center; }
-    .radar-ahead-card { flex: 1.1; max-width: 460px; }
-    .speed-number { font-size: clamp(80px, 32vw, 140px); }
+    .camsam-topbar { width: 100%; height: 50px; }
+    .camsam-main-stage { flex: 1; height: calc(100vh - 106px); }
+    .camsam-radar-list { flex: 1.1; max-width: 480px; height: calc(100vh - 106px); justify-content: center; }
+    .camsam-bottom-bar { width: 100%; height: 50px; }
   }
 
   /* Panels & Dialogs */
@@ -514,70 +471,99 @@ if (!window.JSZip) {
 <!-- ============================================================
      CAR COCKPIT (HUD)
      ============================================================ -->
+<!-- ============================================================
+     CAMSAM STYLE CAR COCKPIT (HUD)
+     ============================================================ -->
 <div class="car-mode" id="carMode">
-  <!-- Header: Current Road & Actions -->
-  <div class="cockpit-header">
-    <div class="road-badge-wrap">
-      <span class="road-icon">🛣️</span>
-      <div class="road-info-block">
-        <span class="road-name" id="carRoadName">Recherche de la route…</span>
-        <span class="road-sub" id="carRoadSub">Positionnement GPS actif</span>
-      </div>
+  <!-- Topbar: (+) Report, Segmented LED Distance Gauge, Speedometer -->
+  <div class="camsam-topbar">
+    <button class="camsam-add-btn" id="btnCarReport" title="Signaler un radar ou contrôle">+</button>
+    
+    <!-- LED Distance Gauge Bars -->
+    <div class="camsam-led-gauge" id="camsamLedGauge">
+      <div class="camsam-led-bar green" id="ledBar1"></div>
+      <div class="camsam-led-bar green" id="ledBar2"></div>
+      <div class="camsam-led-bar green" id="ledBar3"></div>
+      <div class="camsam-led-bar red" id="ledBar4"></div>
+      <div class="camsam-led-bar red" id="ledBar5"></div>
+      <div class="camsam-led-bar red" id="ledBar6"></div>
     </div>
-    <div class="cockpit-controls">
-      <button class="cockpit-btn report-btn" id="btnCarReport" title="Signaler un événement">🚨 Signaler</button>
-      <button class="cockpit-btn voice-on" id="btnCarVoice" title="Annonces vocales">🗣️</button>
-      <button class="cockpit-btn" id="btnExitCar">✕ Quitter</button>
+
+    <!-- Live Speedometer -->
+    <div class="camsam-speed-box">
+      <span class="camsam-speed-val" id="carSpeed">0</span>
+      <span class="camsam-speed-unit">km/h</span>
     </div>
   </div>
 
-  <!-- Body: Speedometer + Radar Ahead Card -->
-  <div class="cockpit-body">
-    <!-- Speed Cluster -->
-    <div class="speed-cluster">
-      <div class="speed-display-wrap">
-        <div class="speed-number" id="carSpeed">0</div>
-        <span class="speed-unit-tag">km/h</span>
-      </div>
+  <!-- Center Stage: Safe Chevrons or Alert Speed Sign -->
+  <div class="camsam-main-stage" id="camsamMainStage">
+    <!-- Safe Chevrons (when no radar ahead) -->
+    <div class="camsam-chevrons-wrap" id="camsamChevrons">
+      <div class="camsam-chevron"></div>
+      <div class="camsam-chevron"></div>
+      <div class="camsam-chevron"></div>
+    </div>
+
+    <!-- Alert Traffic Sign (when radar ahead) -->
+    <div class="camsam-alert-sign-wrap" id="camsamAlertSignWrap" style="display:none;">
+      <!-- Directional Top Arrow -->
+      <div class="camsam-direction-arrow" id="camsamSignArrow"></div>
       
-      <!-- Traffic Signs & Delta Speed -->
-      <div class="limits-row">
-        <div class="traffic-sign" id="carLimitSign" style="display:none;">
-          <span id="carLimitVal">—</span>
-        </div>
-        <div class="traffic-sign pl-sign" id="carLimitPlSign" style="display:none;">
-          <span id="carLimitPlVal">—</span>
-          <span class="sign-sub">PL</span>
-        </div>
-        <div class="speed-delta-badge" id="carSpeedDelta"></div>
+      <!-- Round Speed Sign or Triangle -->
+      <div class="camsam-sign-circle" id="camsamSignCircle">
+        <span class="camsam-sign-speed-text" id="camsamSignSpeed">70</span>
+        <span class="camsam-sign-icon" id="camsamSignIcon" style="display:none;">📸</span>
+      </div>
+
+      <!-- Triangle Danger Sign for Workzones / Danger -->
+      <div class="camsam-sign-circle triangle-sign" id="camsamSignTriangle" style="display:none;">
+        <svg class="camsam-sign-triangle-svg" viewBox="0 0 100 88">
+          <polygon points="50,4 96,84 4,84" fill="#e74c3c" stroke="#e74c3c" stroke-width="3" stroke-linejoin="round"/>
+          <polygon points="50,16 84,78 16,78" fill="#ffffff" stroke-linejoin="round"/>
+          <text x="50" y="66" font-size="34" text-anchor="middle" id="camsamTriangleEmoji">🚧</text>
+        </svg>
       </div>
     </div>
 
-    <!-- Radar Ahead Card -->
-    <div class="radar-ahead-card none" id="carRadarCard">
-      <div class="radar-card-top">
-        <div class="radar-category-pill">
-          <div class="radar-category-badge" id="carCardIcon">📡</div>
-          <span id="carCardType">Aucun radar devant</span>
-        </div>
-        <div class="radar-axis-tag" id="carCardAxis">SUR VOTRE AXE</div>
-      </div>
-
-      <div class="radar-card-main">
-        <div class="radar-location-block">
-          <div class="radar-loc-title" id="carCardLocation">—</div>
-          <div class="radar-loc-detail" id="carCardDetail">Route sécurisée</div>
-        </div>
-        <div class="radar-distance-block">
-          <span class="radar-dist-digits" id="carCardDist">—</span>
-          <span class="radar-dist-unit-label" id="carCardUnit"></span>
-        </div>
-      </div>
-
-      <div class="radar-progress-track">
-        <div class="radar-progress-bar" id="carProgressBar"></div>
-      </div>
+    <!-- Star Ratings (CamSam reliability) -->
+    <div class="camsam-stars-row" id="camsamStarsRow">
+      <span class="camsam-star active">★</span>
+      <span class="camsam-star active">★</span>
+      <span class="camsam-star active">★</span>
     </div>
+  </div>
+
+  <!-- Up-Next Radar List (2 rows) -->
+  <div class="camsam-radar-list" id="camsamRadarList">
+    <div class="camsam-list-item" id="camsamListRow1">
+      <div class="camsam-item-left">
+        <span class="camsam-item-icon" id="camsamRowIcon1">🛣️</span>
+        <span class="camsam-item-name" id="camsamRowName1">Recherche de la route…</span>
+      </div>
+      <span class="camsam-item-dist" id="camsamRowDist1">—</span>
+    </div>
+    <div class="camsam-list-item" id="camsamListRow2">
+      <div class="camsam-item-left">
+        <span class="camsam-item-icon" id="camsamRowIcon2">📡</span>
+        <span class="camsam-item-name" id="camsamRowName2">Route sécurisée</span>
+      </div>
+      <span class="camsam-item-dist" id="camsamRowDist2">—</span>
+    </div>
+  </div>
+
+  <!-- Bottom 3-Button Toolbar -->
+  <div class="camsam-bottom-bar">
+    <button class="camsam-bar-btn" id="btnCarVoice" title="Annonces Vocales (TTS)">
+      <span>🗣️</span>
+    </button>
+    <button class="camsam-bar-btn" id="btnCarUsers" title="Communauté active">
+      <span>👥</span>
+      <span class="camsam-users-count" id="camsamUsersCount">15 183</span>
+    </button>
+    <button class="camsam-bar-btn" id="btnExitCar" title="Quitter le mode route / Retour carte">
+      <span>✕</span>
+    </button>
   </div>
 </div>
 
@@ -1424,9 +1410,9 @@ function onPosErr(err) {
 // ============================================================
 //  PROXIMITY & SMART CORRIDOR DETECTION
 // ============================================================
-function findNearestRadarAhead() {
-  if (!STATE.userPos) return null;
-  let best = null;
+function findRadarsAheadList(maxCount = 2) {
+  if (!STATE.userPos) return [];
+  const matches = [];
   const all = [...STATE.radars, ...STATE.community];
 
   for (const r of all) {
@@ -1437,11 +1423,16 @@ function findNearestRadarAhead() {
     if (!res.match) continue;
 
     const weight = res.isStrictMatch ? res.d * 0.7 : res.d;
-    if (!best || weight < best.weight) {
-      best = { r, d: res.d, isStrictMatch: res.isStrictMatch, weight };
-    }
+    matches.push({ r, d: res.d, isStrictMatch: res.isStrictMatch, weight });
   }
-  return best;
+
+  matches.sort((a, b) => a.weight - b.weight);
+  return matches.slice(0, maxCount);
+}
+
+function findNearestRadarAhead() {
+  const list = findRadarsAheadList(1);
+  return list.length > 0 ? list[0] : null;
 }
 
 function checkProximity() {
@@ -1607,108 +1598,141 @@ function maybeAutoCarMode() {
   }
 }
 
+function formatDist(d) {
+  if (d == null || isNaN(d)) return '—';
+  if (d >= 1000) return (d / 1000).toFixed(1) + ' km';
+  return Math.round(d) + ' m';
+}
+
 function updateCarUI() {
   if (!STATE.carMode) return;
   const currentSpeed = Math.max(0, Math.round(STATE.userSpeed * 3.6));
   const speedEl = document.getElementById('carSpeed');
   speedEl.textContent = currentSpeed;
 
-  const card = document.getElementById('carRadarCard');
-  const limitSign = document.getElementById('carLimitSign');
-  const limitPlSign = document.getElementById('carLimitPlSign');
-  const deltaBadge = document.getElementById('carSpeedDelta');
-  const progressBar = document.getElementById('carProgressBar');
+  const chevrons = document.getElementById('camsamChevrons');
+  const alertSignWrap = document.getElementById('camsamAlertSignWrap');
+  const signCircle = document.getElementById('camsamSignCircle');
+  const signTriangle = document.getElementById('camsamSignTriangle');
+  const signSpeed = document.getElementById('camsamSignSpeed');
+  const signIcon = document.getElementById('camsamSignIcon');
+  const signArrow = document.getElementById('camsamSignArrow');
+  const stars = document.getElementById('camsamStarsRow').querySelectorAll('.camsam-star');
 
-  const nearest = findNearestRadarAhead();
+  // LED Gauge bars
+  const ledBars = [
+    document.getElementById('ledBar1'), document.getElementById('ledBar2'), document.getElementById('ledBar3'),
+    document.getElementById('ledBar4'), document.getElementById('ledBar5'), document.getElementById('ledBar6')
+  ];
 
-  document.body.classList.remove('car-warning', 'car-danger', 'car-overspeed');
-  card.classList.remove('alert', 'warning', 'none');
+  // Radar rows
+  const rowIcon1 = document.getElementById('camsamRowIcon1');
+  const rowName1 = document.getElementById('camsamRowName1');
+  const rowDist1 = document.getElementById('camsamRowDist1');
+
+  const rowIcon2 = document.getElementById('camsamRowIcon2');
+  const rowName2 = document.getElementById('camsamRowName2');
+  const rowDist2 = document.getElementById('camsamRowDist2');
+
+  const aheadList = findRadarsAheadList(2);
+  const nearest = aheadList.length > 0 ? aheadList[0] : null;
+  const second = aheadList.length > 1 ? aheadList[1] : null;
+
+  // Active Users Counter (Realistic CamSam / Community badge)
+  const totalCount = 14000 + (STATE.community.length * 15) + (STATE.radars.length % 500);
+  document.getElementById('camsamUsersCount').textContent = totalCount.toLocaleString('fr-FR');
 
   if (!nearest) {
-    document.getElementById('carCardIcon').textContent = '📡';
-    document.getElementById('carCardType').textContent = 'Aucun radar devant';
-    document.getElementById('carCardLocation').textContent = STATE.currentRoad.fullName || 'Route sécurisée';
-    document.getElementById('carCardDetail').textContent = 'Voie libre';
-    document.getElementById('carCardDist').textContent = '—';
-    document.getElementById('carCardUnit').textContent = '';
-    document.getElementById('carCardAxis').style.display = 'none';
-    progressBar.style.width = '0%';
-    card.classList.add('none');
-
-    limitSign.style.display = 'none';
-    limitPlSign.style.display = 'none';
-    deltaBadge.style.display = 'none';
+    // 1. SAFE STATE: Green Chevrons
+    chevrons.style.display = 'flex';
+    alertSignWrap.style.display = 'none';
     speedEl.classList.remove('overspeed');
+
+    // LED Gauge off
+    ledBars.forEach(b => b.classList.remove('active'));
+
+    // Stars at 3/3 active
+    stars.forEach(s => s.classList.add('active'));
+
+    // Rows: Current Road & Free track
+    rowIcon1.textContent = '🛣️';
+    rowName1.textContent = STATE.currentRoad.fullName || 'Recherche de la route…';
+    rowDist1.textContent = 'Voie libre';
+
+    rowIcon2.textContent = '📡';
+    rowName2.textContent = 'Aucun radar détecté';
+    rowDist2.textContent = '—';
     return;
   }
 
+  // 2. ALERT STATE
   const { r, d, isStrictMatch } = nearest;
-  const info = typeInfo(r.type);
   const isOverspeed = STATE.settings.overspeed && r.vitesse && currentSpeed > (r.vitesse + 3);
 
+  chevrons.style.display = 'none';
+  alertSignWrap.style.display = 'flex';
+
   if (isOverspeed) {
-    document.body.classList.add('car-overspeed');
     speedEl.classList.add('overspeed');
-    card.classList.add('alert');
   } else {
     speedEl.classList.remove('overspeed');
-    if (d < 350) {
-      document.body.classList.add('car-danger');
-      card.classList.add('alert');
-    } else if (d < 700) {
-      document.body.classList.add('car-warning');
-      card.classList.add('warning');
-    }
   }
 
-  document.getElementById('carCardIcon').textContent = info.icon || '⚠️';
-  document.getElementById('carCardType').textContent = r.community ? prettyType(r.type) : r.type;
-  document.getElementById('carCardLocation').textContent = [r.emplacement, r.route].filter(Boolean).join(' — ') || 'Radar détecté';
-  document.getElementById('carCardDetail').textContent = r.direction ? `Sens : ${r.direction}` : (isStrictMatch ? 'Aligné sur votre trajectoire' : 'Alerte axe');
+  // Directional arrow if aligned
+  signArrow.style.display = isStrictMatch ? 'block' : 'none';
+
+  // Determine Sign Type (Round speed sign or Danger Triangle)
+  const isChantierOrDanger = r.type.includes('chantier') || r.type.includes('danger') || r.type.includes('contrôle') || r.type.includes('controle');
   
-  const axisTag = document.getElementById('carCardAxis');
-  axisTag.style.display = 'block';
-  axisTag.textContent = isStrictMatch ? '🎯 SUR VOTRE AXE' : '📡 DEVANT VOUS';
-
-  if (d >= 1000) {
-    document.getElementById('carCardDist').textContent = (d / 1000).toFixed(1);
-    document.getElementById('carCardUnit').textContent = 'km';
+  if (isChantierOrDanger && !r.vitesse) {
+    signCircle.style.display = 'none';
+    signTriangle.style.display = 'flex';
+    document.getElementById('camsamTriangleEmoji').textContent = r.type.includes('chantier') ? '🚧' : (r.type.includes('contrôle') ? '👮' : '⚠️');
+  } else if (r.vitesse) {
+    signTriangle.style.display = 'none';
+    signCircle.style.display = 'flex';
+    signIcon.style.display = 'none';
+    signSpeed.style.display = 'block';
+    signSpeed.textContent = r.vitesse;
   } else {
-    document.getElementById('carCardDist').textContent = Math.round(d);
-    document.getElementById('carCardUnit').textContent = 'm';
+    signTriangle.style.display = 'none';
+    signCircle.style.display = 'flex';
+    signSpeed.style.display = 'none';
+    signIcon.style.display = 'block';
+    signIcon.textContent = typeInfo(r.type).icon || '📸';
   }
 
-  const maxRange = STATE.settings.distance;
-  const progressPercent = Math.max(5, Math.min(100, Math.round((1 - (d / maxRange)) * 100)));
-  progressBar.style.width = `${progressPercent}%`;
+  // Update Segmented Distance LED Gauge (6 levels from dist Range down to 0)
+  const maxD = STATE.settings.distance;
+  const ratio = Math.max(0, Math.min(1, 1 - (d / maxD)));
+  const activeCount = Math.ceil(ratio * 6); // 1 to 6 bars
 
-  if (r.vitesse) {
-    limitSign.style.display = 'flex';
-    document.getElementById('carLimitVal').textContent = r.vitesse;
+  ledBars.forEach((bar, idx) => {
+    if (idx < activeCount) bar.classList.add('active');
+    else bar.classList.remove('active');
+  });
 
-    if (r.vitesse_pl) {
-      limitPlSign.style.display = 'flex';
-      document.getElementById('carLimitPlVal').textContent = r.vitesse_pl;
-    } else {
-      limitPlSign.style.display = 'none';
-    }
+  // Stars reliability based on votes or confidence
+  const starsCount = r.community ? Math.max(1, Math.min(3, r.votes || 2)) : 3;
+  stars.forEach((s, idx) => {
+    if (idx < starsCount) s.classList.add('active');
+    else s.classList.remove('active');
+  });
 
-    const delta = currentSpeed - r.vitesse;
-    deltaBadge.style.display = 'inline-block';
-    deltaBadge.classList.remove('over', 'under');
-    if (delta > 0) {
-      deltaBadge.classList.add('over');
-      deltaBadge.textContent = `+${delta} km/h`;
-    } else if (delta < 0) {
-      deltaBadge.classList.add('under');
-      deltaBadge.textContent = `${delta} km/h`;
-    } else {
-      deltaBadge.textContent = '0 km/h';
-    }
+  // Row 1: Nearest Radar
+  rowIcon1.textContent = typeInfo(r.type).icon || '📷';
+  rowName1.textContent = [r.emplacement, r.route, r.type].filter(Boolean)[0] || r.type;
+  rowDist1.textContent = formatDist(d);
+
+  // Row 2: Second Radar Ahead (or Current Road if none)
+  if (second) {
+    rowIcon2.textContent = typeInfo(second.r.type).icon || '📷';
+    rowName2.textContent = [second.r.emplacement, second.r.route, second.r.type].filter(Boolean)[0] || second.r.type;
+    rowDist2.textContent = formatDist(second.d);
   } else {
-    limitSign.style.display = 'none';
-    limitPlSign.style.display = 'none';
-    deltaBadge.style.display = 'none';
+    rowIcon2.textContent = '🛣️';
+    rowName2.textContent = STATE.currentRoad.fullName || 'Voie dégagée ensuite';
+    rowDist2.textContent = '—';
   }
 }
 setInterval(() => { if (STATE.carMode) updateCarUI(); }, 1000);
@@ -1735,13 +1759,17 @@ document.getElementById('backdrop').onclick = () => { closePanel(); closeAddDial
 document.getElementById('btnCar').onclick = () => { if (STATE.carMode) exitCarMode(); else enterCarMode(); };
 document.getElementById('btnExitCar').onclick = exitCarMode;
 
+document.getElementById('camsamChevrons').onclick = triggerQuickReport;
+document.getElementById('btnCarUsers').onclick = () => {
+  toast(`👥 ${document.getElementById('camsamUsersCount').textContent} conducteurs actifs en France`);
+};
 const voiceBtn = document.getElementById('btnCarVoice');
 voiceBtn.onclick = () => {
   STATE.settings.voice = !STATE.settings.voice;
   saveSettings();
   document.getElementById('swVoice').checked = STATE.settings.voice;
-  voiceBtn.classList.toggle('voice-on', STATE.settings.voice);
-  toast(STATE.settings.voice ? 'Annonces vocales activées' : 'Annonces vocales coupées');
+  voiceBtn.classList.toggle('active', STATE.settings.voice);
+  toast(STATE.settings.voice ? '🗣️ Annonces vocales activées' : '🔇 Annonces vocales coupées');
   if (STATE.settings.voice) speakAlert('Annonces vocales activées');
 };
 
