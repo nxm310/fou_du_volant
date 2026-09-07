@@ -666,12 +666,12 @@
 
   <h3>☁️ Synchronisation Google Drive</h3>
   <div style="background:#222226; border-radius:14px; padding:14px; margin-bottom:8px;">
-    <div style="font-size:13px; font-weight:700; margin-bottom:4px;">Fichier de radars automatique</div>
+    <div style="font-size:13px; font-weight:700; margin-bottom:4px;">Dossier ou fichier de radars automatique</div>
     <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px; line-height:1.45;">
-      Collez le lien de partage de votre fichier Google Drive (CSV, ASC, KML, TXT, JSON ou Google Sheet).<br>
+      Collez le lien de partage de votre dossier ou fichier Google Drive (dossier partagé, CSV, ASC, KML, TXT, JSON ou Google Sheet).<br>
       <span style="color:var(--accent);">Assurez-vous que le partage est réglé sur « Tous les utilisateurs disposant du lien ».</span>
     </div>
-    <input type="text" class="input-text" id="cfgGdriveUrl" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+    <input type="text" class="input-text" id="cfgGdriveUrl" placeholder="https://drive.google.com/drive/folders/... ou /file/d/...">
     
     <div class="row" style="margin-top:10px; padding:0; display:flex; justify-content:space-between; align-items:center;">
       <label style="font-size:13px; margin:0;">Synchroniser au démarrage de l'app</label>
@@ -2084,6 +2084,54 @@ function buildRadarFromDetails(lat, lng, desc = '', rawType = '', rawSpeed = nul
   };
 }
 
+function extractFilesFromGoogleDriveFolder(html) {
+  const found = [];
+  const seen = new Set();
+  
+  // 1. embeddedfolderview links
+  const regex1 = /href="[^"]*(?:id=|\/file\/d\/)([a-zA-Z0-9_-]{20,})[^"]*"[^>]*>([^<]+)<\/a>/gi;
+  let m;
+  while ((m = regex1.exec(html)) !== null) {
+    const fid = m[1], name = m[2].trim();
+    if (!seen.has(fid) && !name.toLowerCase().includes('google') && !name.toLowerCase().includes('drive')) {
+      seen.add(fid);
+      found.push({ id: fid, name });
+    }
+  }
+
+  // 2. Drive JSON payloads containing file IDs and radar extensions
+  const regex2 = /"([a-zA-Z0-9_-]{25,50})"[^"]*?"([^"]+\.(?:asc|csv|kml|gpx|txt|json|zip))"/gi;
+  while ((m = regex2.exec(html)) !== null) {
+    const fid = m[1], name = m[2];
+    if (!seen.has(fid)) {
+      seen.add(fid);
+      found.push({ id: fid, name });
+    }
+  }
+  const regex3 = /"([^"]+\.(?:asc|csv|kml|gpx|txt|json|zip))"[^"]*?"([a-zA-Z0-9_-]{25,50})"/gi;
+  while ((m = regex3.exec(html)) !== null) {
+    const name = m[1], fid = m[2];
+    if (!seen.has(fid)) {
+      seen.add(fid);
+      found.push({ id: fid, name });
+    }
+  }
+
+  // 3. Fallback: match any Google Drive File IDs in the folder
+  if (found.length === 0) {
+    const regexAnyId = /\/file\/d\/([a-zA-Z0-9_-]{25,50})/gi;
+    while ((m = regexAnyId.exec(html)) !== null) {
+      const fid = m[1];
+      if (!seen.has(fid)) {
+        seen.add(fid);
+        found.push({ id: fid, name: 'fichier_radar' });
+      }
+    }
+  }
+
+  return found;
+}
+
 async function syncGoogleDrive(isUserTriggered = false) {
   const gdriveUrl = (STATE.settings.gdriveUrl || '').trim();
   if (!gdriveUrl) {
@@ -2095,26 +2143,84 @@ async function syncGoogleDrive(isUserTriggered = false) {
   updateGdriveStatusUI('Synchronisation en cours…');
 
   try {
-    const downloadCandidates = getGoogleDriveDownloadUrls(gdriveUrl);
-    let downloadedText = null;
-    let lastError = null;
+    let parsedRadars = [];
+    const folderMatch = gdriveUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/) || (gdriveUrl.includes('drive.google.com') && gdriveUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) && !gdriveUrl.includes('file'));
 
-    for (const url of downloadCandidates) {
-      try {
-        downloadedText = await fetchWithCORS(url);
-        if (downloadedText && downloadedText.trim().length > 10) break;
-      } catch (e) {
-        lastError = e;
+    if (folderMatch) {
+      // Google Drive FOLDER
+      const folderId = folderMatch[1];
+      updateGdriveStatusUI('Lecture du dossier Google Drive…');
+      
+      const folderUrls = [
+        `https://drive.google.com/embeddedfolderview?id=${folderId}#list`,
+        `https://drive.google.com/drive/folders/${folderId}`
+      ];
+
+      let folderHtml = null;
+      for (const furl of folderUrls) {
+        try {
+          folderHtml = await fetchWithCORS(furl);
+          if (folderHtml && folderHtml.length > 100) break;
+        } catch (e) {}
       }
+
+      if (!folderHtml) {
+        throw new Error('Impossible d\'accéder au dossier Google Drive. Vérifiez que le partage est bien public.');
+      }
+
+      const files = extractFilesFromGoogleDriveFolder(folderHtml);
+      if (!files || files.length === 0) {
+        throw new Error('Aucun fichier de radars détecté dans ce dossier Google Drive.');
+      }
+
+      updateGdriveStatusUI(`Téléchargement de ${files.length} fichier(s) du dossier…`);
+      for (const file of files) {
+        try {
+          const fileDownloadUrls = [
+            `https://drive.usercontent.google.com/download?id=${file.id}&export=download`,
+            `https://drive.google.com/uc?export=download&id=${file.id}`
+          ];
+          let fileText = null;
+          for (const fdUrl of fileDownloadUrls) {
+            try {
+              fileText = await fetchWithCORS(fdUrl);
+              if (fileText && fileText.trim().length > 10) break;
+            } catch (e) {}
+          }
+          if (fileText) {
+            const rads = parseGenericRadarData(fileText);
+            if (rads && rads.length > 0) {
+              parsedRadars.push(...rads);
+            }
+          }
+        } catch (e) {
+          console.warn('Error reading file from folder:', file.name, e);
+        }
+      }
+    } else {
+      // Google Drive FILE or Google Sheet or direct link
+      const downloadCandidates = getGoogleDriveDownloadUrls(gdriveUrl);
+      let downloadedText = null;
+      let lastError = null;
+
+      for (const url of downloadCandidates) {
+        try {
+          downloadedText = await fetchWithCORS(url);
+          if (downloadedText && downloadedText.trim().length > 10) break;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (!downloadedText) {
+        throw lastError || new Error('Impossible de lire le fichier depuis ce lien Google Drive');
+      }
+
+      parsedRadars = parseGenericRadarData(downloadedText);
     }
 
-    if (!downloadedText) {
-      throw lastError || new Error('Impossible de lire le fichier depuis ce lien Google Drive');
-    }
-
-    const parsedRadars = parseGenericRadarData(downloadedText);
     if (!parsedRadars || parsedRadars.length === 0) {
-      throw new Error('Aucun radar détecté dans ce fichier. Vérifiez le format (CSV, ASC, KML, JSON)');
+      throw new Error('Aucun radar détecté dans ce fichier ou dossier. Vérifiez le format (CSV, ASC, KML, JSON)');
     }
 
     // Merge into STATE.radars
@@ -2150,7 +2256,7 @@ async function syncGoogleDrive(isUserTriggered = false) {
     updateStats(Date.now());
     setStatus(`${STATE.radars.length} radars chargés`, false);
 
-    const successMsg = `✅ <strong>${parsedRadars.length} radars trouvés</strong> (+${totalImported} nouveaux/mis à jour)`;
+    const successMsg = `✅ <strong>${parsedRadars.length} radars synchronisés</strong> (+${totalImported} nouveaux/mis à jour)`;
     updateGdriveStatusUI(successMsg);
 
     if (isUserTriggered) {
