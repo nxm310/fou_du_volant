@@ -1,50 +1,61 @@
-# 🚨 Fou du Volant — Radars France (PWA v2.1)
+# 🚨 Fou du Volant — Radars France (PWA v2.2)
 
-Carte interactive et assistant d'aide à la conduite des **radars automatiques en France** avec alertes de proximité, **synthèse vocale mains-libres**, **détection de survitesse**, mode voiture tête-haute (HUD) et signalement communautaire. PWA hors-ligne installable sur iPhone/Android.
+Carte interactive et assistant d'aide à la conduite des **radars automatiques et communautaires en France** avec alertes de proximité, **synthèse vocale mains-libres**, **détection de survitesse**, mode voiture tête-haute (HUD OLED), détection d'axe en direct et import des bases **Lufop.net**.
 
 ---
 
 ## ✨ Fonctionnalités majeures
 
-### 🗼 Typologie complète du parc français (~4 800 radars)
-- **Radars tourelles** (Mesta Fusion) 🗼
-- **Radars discriminants** (distinction VL vs Poids Lourds avec double limitation) 🚛🚗
-- **Radars autonomes & de chantier** (semi-fixes) 🚧
+### 🗼 Typologie complète du parc français (~4 800 radars + Lufop)
+- **Radars tourelles** (*Mesta Fusion*) 🗼
+- **Radars discriminants** (*distinction VL vs Poids Lourds avec double limitation*) 🚛🚗
+- **Radars autonomes & de chantier** (*semi-fixes*) 🚧
 - **Radars urbains** 🏙️
-- **Radars tronçons** (vitesse moyenne avec calcul de longueur) ⏱️
+- **Radars tronçons** (*vitesse moyenne avec calcul de longueur*) ⏱️
 - **Radars feux rouges & passages à niveau** 🚦🚂
 - **Radars fixes classiques** 📷
 - **Cabines leurres / Itinéraires sécurisés** 🎭
+- **Radars mobiles & contrôles routiers** 🚓👮
+
+---
+
+### 📁 Support & Import des bases Lufop.net
+- **Liens directs intégrés** dans l'application pour télécharger les packs officiels Lufop :
+  - 📥 *Radars mobiles fréquents* (CSV / GPX)
+  - 📥 *Radars fixes & tourelles* (CSV / GPX)
+  - 📥 *Pack complet France*
+- **Import 1-clic dans l'application** : Glissez-déposez n'importe quel fichier CSV, ASC ou GPX issu de Lufop directement dans le panneau *Réglages* pour l'intégrer à votre carte !
+- **Script de fusion local** : Placez vos fichiers dans le dossier `data/lufop/` et lancez `python scripts/update_radars.py` pour régénérer la base `radars.json`.
 
 ---
 
 ### 🗣️ Alertes & Assistant Vocal
 - **Synthèse Vocale (TTS)** : Annonces parlées automatiques en français (*"Attention, radar discriminant dans 500 mètres, limité à 80"*).
-- **Alerte de Survitesse** : Si votre vitesse dépasse la limitation du radar, l'interface flashe en rouge d'urgence avec avertissement vocal (*"Ralentissez !"*).
-- **Filtrage directionnel** : Alerte **uniquement dans le sens de circulation** ($\pm 60^\circ$).
-- **Multi-alertes personnalisables** : Bip audio progressif, vibrations haptiques et notifications push.
+- **Alerte de Survitesse** : Si votre vitesse dépasse la limitation du radar, le cockpit flashe en rouge d'urgence avec avertissement vocal (*"Ralentissez !"*).
+- **Filtrage d'Axe Intelligent** : Détection de la route actuelle et filtrage géométrique par couloir de trajectoire ($\pm 35\text{m}$) pour ne recevoir aucune fausse alerte.
 
 ---
 
-### 🚗 Mode Voiture Tête-Haute (HUD)
+### 🚗 Mode Voiture Cockpit OLED (HUD)
 - **Activation automatique** dès que la vitesse dépasse 30 km/h.
-- Compteur de vitesse géant et lisible en un coup d'œil.
-- Affichage des panneaux de limitation de vitesse (VL et PL si discriminant).
-- Distance et type du prochain radar avec escalade d'alerte (vert $\rightarrow$ ambre $\rightarrow$ rouge pulsant).
-- **Wake Lock** : Maintien de l'écran allumé pendant la conduite.
+- Nom de la route en direct (ex: 🛣️ *A6*, *RN104*, *D950*, *Boulevard Périphérique*).
+- Compteur de vitesse géant haute définition.
+- Panneaux officiels de limitation de vitesse (VL et PL).
+- Carte d'approche radar avec compte à rebours et barre de progression animée.
+- **Bouton 🚨 Signaler** directement accessible sur le tableau de bord.
+- Mode paysage / portrait automatique.
 
 ---
 
 ### 👥 Communauté en temps réel (Supabase)
-- **Tap long sur la carte** pour signaler instantanément un événement :
+- **Mode Hybride** : Fonctionne en mode local immédiat (stockage navigateur) ou synchronisé en temps réel avec Supabase.
+- **Bouton 🚨 Signaler en 1 tap** (carte et mode voiture) pour déclarer :
   - 🚓 Radar mobile
+  - 👮 Contrôle routier / FDO
   - 🚙 Voiture-radar privatisée
-  - 🚧 Radar autonome / chantier
-  - 👮 Zone de contrôle
-  - ⚠️ Zone de danger
-  - 📡 Nouveau radar fixe
-- Votes 👍 / 👎 sur les signalements avec déduplication par utilisateur.
-- Expiration automatique des signalements anciens (24h/48h).
+  - 🚧 Radar chantier / travaux
+  - ⚠️ Zone de danger / accident
+- Votes 👍 / 👎 sur les signalements communautaires.
 
 ---
 
@@ -57,26 +68,14 @@ cd fou_du_volant
 ```
 
 ### Étape 2 — Mettre à jour la base des radars
-Le projet inclut la base `radars.json`. Pour la rafraîchir à tout moment depuis data.gouv.fr :
 ```bash
 python scripts/update_radars.py
 ```
 
-### Étape 3 — Configurer Supabase (Backend communautaire)
+### Étape 3 — Configurer Supabase (Optionnel)
 1. Créez un projet gratuit sur [supabase.com](https://supabase.com).
 2. Dans le **SQL Editor**, exécutez le script [`supabase-setup.sql`](file:///e:/antigravity/pc/fou%20du%20voant/supabase-setup.sql).
-3. Renseignez vos clés publiques dans [`config.js`](file:///e:/antigravity/pc/fou%20du%20voant/config.js) :
-```js
-window.SUPABASE_URL = 'https://TON_PROJET.supabase.co';
-window.SUPABASE_ANON_KEY = 'eyJhbGciOi...';
-```
-
-### Étape 4 — Tester en local
-```bash
-# Avec Python
-python -m http.server 8000
-```
-Ouvrez [http://localhost:8000](http://localhost:8000) dans votre navigateur.
+3. Renseignez votre URL de projet et clé `anon` dans l'application via le panneau **Réglages** $\rightarrow$ section *Communauté*.
 
 ---
 
@@ -89,5 +88,5 @@ Ouvrez [http://localhost:8000](http://localhost:8000) dans votre navigateur.
 
 ## 📊 Sources & Licences
 - **Données officielles** : Ministère de l'Intérieur / [data.gouv.fr](https://www.data.gouv.fr/datasets/radars-automatiques) (Licence Ouverte 2.0).
+- **Données communautaires** : [Lufop.net](https://lufop.net/).
 - **Cartographie** : [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL).
-- **Moteurs** : Leaflet, Supabase JS SDK.
