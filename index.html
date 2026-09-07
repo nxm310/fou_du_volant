@@ -1934,21 +1934,67 @@ function getGoogleDriveDownloadUrls(inputUrl) {
   return urls;
 }
 
+function loadViaJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'gdrive_cb_' + Math.random().toString(36).slice(2, 9);
+    const script = document.createElement('script');
+    const separator = url.includes('?') ? '&' : '?';
+    script.src = `${url}${separator}callback=${callbackName}`;
+    
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Délai d\'attente dépassé pour le script Google'));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      delete window[callbackName];
+    }
+
+    window[callbackName] = (data) => {
+      cleanup();
+      if (typeof data === 'string') resolve(data);
+      else if (typeof data === 'object') resolve(JSON.stringify(data));
+      else resolve(String(data));
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Impossible de contacter le script Google (vérifiez que l\'accès est bien réglé sur "Tout le monde")'));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
 async function fetchWithCORS(targetUrl) {
   // 1. Direct fetch with redirect follow (Native support for Google Apps Script, Google Sheets, Dropbox, GitHub)
   try {
     const res = await fetch(targetUrl, { redirect: 'follow', cache: 'no-cache' });
     if (res.ok) {
       const text = await res.text();
-      if (text && text.trim().length > 5) {
+      if (text && text.trim().length > 5 && !text.includes('Google Accounts')) {
         return text;
       }
     }
   } catch (directErr) {
-    console.warn('Direct fetch attempt failed, trying proxies...', directErr);
+    console.warn('Direct fetch attempt failed, trying JSONP/proxies...', directErr);
   }
 
-  // 2. Proxy Fallbacks if direct fetch is blocked by CORS
+  // 2. If Google Apps Script, try JSONP
+  if (targetUrl.includes('script.google.com')) {
+    try {
+      const jsonpData = await loadViaJSONP(targetUrl);
+      if (jsonpData && jsonpData.trim().length > 5) {
+        return jsonpData;
+      }
+    } catch (jsonpErr) {
+      console.warn('JSONP attempt failed...', jsonpErr);
+    }
+  }
+
+  // 3. Proxy Fallbacks if direct fetch is blocked by CORS
   const proxyCandidates = [
     'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
     'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(targetUrl)
@@ -1969,7 +2015,7 @@ async function fetchWithCORS(targetUrl) {
     }
   }
 
-  throw lastErr || new Error('Impossible de récupérer les données depuis ce lien. Vérifiez les autorisations du script ou du fichier.');
+  throw lastErr || new Error('Impossible de récupérer les données depuis ce lien. Vérifiez les autorisations du script Google (accès: Tout le monde).');
 }
 
 function parseGenericRadarData(text) {
