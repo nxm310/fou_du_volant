@@ -664,6 +664,26 @@
     <button class="btn secondary" id="btnSaveSupabase" style="margin-top:10px; padding:10px; font-size:14px;">Tester & Enregistrer</button>
   </div>
 
+  <h3>☁️ Synchronisation Google Drive</h3>
+  <div style="background:#222226; border-radius:14px; padding:14px; margin-bottom:8px;">
+    <div style="font-size:13px; font-weight:700; margin-bottom:4px;">Fichier de radars automatique</div>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px; line-height:1.45;">
+      Collez le lien de partage de votre fichier Google Drive (CSV, ASC, KML, TXT, JSON ou Google Sheet).<br>
+      <span style="color:var(--accent);">Assurez-vous que le partage est réglé sur « Tous les utilisateurs disposant du lien ».</span>
+    </div>
+    <input type="text" class="input-text" id="cfgGdriveUrl" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+    
+    <div class="row" style="margin-top:10px; padding:0; display:flex; justify-content:space-between; align-items:center;">
+      <label style="font-size:13px; margin:0;">Synchroniser au démarrage de l'app</label>
+      <label class="switch"><input type="checkbox" id="swGdriveAuto" checked><span class="slider-sw"></span></label>
+    </div>
+
+    <button class="btn secondary" id="btnSyncGdrive" style="width:100%; margin-top:12px; padding:10px; font-size:13px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;">
+      <span>⚡</span> <span>Tester & Synchroniser maintenant</span>
+    </button>
+    <div id="gdriveSyncStatus" style="font-size:11px; color:var(--text-sub); margin-top:8px; display:none; line-height:1.35;"></div>
+  </div>
+
   <h3>Données & Application</h3>
   <button class="btn secondary" id="btnRefresh">Recharger la base officielle (radars)</button>
   <button class="btn secondary" id="btnForceUpdateApp" style="border: 1px solid var(--accent); color: var(--accent); margin-top:6px;">🔄 Forcer la mise à jour de l'app (Vider le cache)</button>
@@ -746,13 +766,16 @@ function loadSettings() {
       voice: s.voice ?? true, overspeed: s.overspeed ?? true,
       sound: s.sound ?? true, vibrate: s.vibrate ?? true, notif: s.notif ?? false,
       front: s.front ?? true, autoCar: s.autoCar ?? true, wakeLock: s.wakeLock ?? true,
-      community: s.community ?? true, filters: s.filters ?? {}
+      community: s.community ?? true, filters: s.filters ?? {},
+      gdriveUrl: s.gdriveUrl ?? '', gdriveAutoSync: s.gdriveAutoSync ?? true,
+      gdriveLastSync: s.gdriveLastSync ?? null
     };
   } catch {
     return {
       distance: 800, strictRoad: true, voice: true, overspeed: true,
       sound: true, vibrate: true, notif: false, front: true,
-      autoCar: true, wakeLock: true, community: true, filters: {}
+      autoCar: true, wakeLock: true, community: true, filters: {},
+      gdriveUrl: '', gdriveAutoSync: true, gdriveLastSync: null
     };
   }
 }
@@ -1814,6 +1837,347 @@ document.getElementById('btnSaveSupabase').onclick = () => {
   toast('Paramètres Supabase mis à jour');
 };
 
+// ============================================================
+//  GOOGLE DRIVE / CLOUD AUTO-SYNC ENGINE
+// ============================================================
+const cfgGdriveUrl = document.getElementById('cfgGdriveUrl');
+const swGdriveAuto = document.getElementById('swGdriveAuto');
+const btnSyncGdrive = document.getElementById('btnSyncGdrive');
+const gdriveSyncStatus = document.getElementById('gdriveSyncStatus');
+
+if (cfgGdriveUrl) {
+  cfgGdriveUrl.value = STATE.settings.gdriveUrl || '';
+  cfgGdriveUrl.onchange = () => {
+    STATE.settings.gdriveUrl = cfgGdriveUrl.value.trim();
+    saveSettings();
+  };
+}
+if (swGdriveAuto) {
+  swGdriveAuto.checked = STATE.settings.gdriveAutoSync !== false;
+  swGdriveAuto.onchange = () => {
+    STATE.settings.gdriveAutoSync = swGdriveAuto.checked;
+    saveSettings();
+  };
+}
+updateGdriveStatusUI();
+
+function updateGdriveStatusUI(msg = null, isError = false) {
+  if (!gdriveSyncStatus) return;
+  if (msg) {
+    gdriveSyncStatus.style.display = 'block';
+    gdriveSyncStatus.style.color = isError ? 'var(--danger)' : 'var(--success)';
+    gdriveSyncStatus.innerHTML = msg;
+    return;
+  }
+  if (STATE.settings.gdriveLastSync) {
+    const d = new Date(STATE.settings.gdriveLastSync);
+    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    gdriveSyncStatus.style.display = 'block';
+    gdriveSyncStatus.style.color = 'var(--text-sub)';
+    gdriveSyncStatus.textContent = `Dernière synchro : ${dateStr}`;
+  } else {
+    gdriveSyncStatus.style.display = 'none';
+  }
+}
+
+function getGoogleDriveDownloadUrls(inputUrl) {
+  if (!inputUrl) return [];
+  const trimmed = inputUrl.trim();
+  const urls = [];
+
+  const fileIdMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                      trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/) ||
+                      trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  const isSheet = trimmed.includes('spreadsheets');
+
+  if (isSheet && fileIdMatch) {
+    const sheetId = fileIdMatch[1];
+    urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`);
+    urls.push(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`);
+  } else if (fileIdMatch) {
+    const fileId = fileIdMatch[1];
+    urls.push(`https://drive.usercontent.google.com/download?id=${fileId}&export=download`);
+    urls.push(`https://drive.google.com/uc?export=download&id=${fileId}`);
+    urls.push(`https://docs.google.com/uc?export=download&id=${fileId}`);
+  } else if (trimmed.includes('dropbox.com')) {
+    urls.push(trimmed.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/[?&]dl=\d/, ''));
+  } else {
+    urls.push(trimmed);
+  }
+  return urls;
+}
+
+async function fetchWithCORS(targetUrl) {
+  const candidates = [
+    targetUrl,
+    'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl)
+  ];
+
+  let lastErr = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (res.ok) {
+        const text = await res.text();
+        if (text.includes('id="uc-download-link"') || text.includes('action="https://drive.google.com/uc?export=download')) {
+          const m = text.match(/href="(\/uc\?export=download[^"]+)"/) || text.match(/action="([^"]+)"/);
+          if (m) {
+            const confirmUrl = 'https://drive.google.com' + m[1].replace(/&amp;/g, '&');
+            return await fetchWithCORS(confirmUrl);
+          }
+        }
+        if (text && text.trim().length > 10) {
+          return text;
+        }
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Impossible de télécharger le fichier Google Drive');
+}
+
+function parseGenericRadarData(text) {
+  const radars = [];
+  const trimmed = text.trim();
+
+  // 1. JSON Format
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const list = Array.isArray(parsed) ? parsed : (parsed.radars || parsed.data || parsed.features || []);
+      for (const item of list) {
+        let lat = parseFloat(item.lat || item.latitude || (item.geometry?.coordinates?.[1]));
+        let lng = parseFloat(item.lng || item.lon || item.longitude || (item.geometry?.coordinates?.[0]));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const desc = item.emplacement || item.desc || item.name || item.type || item.properties?.name || '';
+          radars.push(buildRadarFromDetails(lat, lng, desc, item.type, item.vitesse || item.speed));
+        }
+      }
+      if (radars.length > 0) return radars;
+    } catch {}
+  }
+
+  // 2. KML Format
+  if (trimmed.includes('<kml') || trimmed.includes('<Placemark')) {
+    const pmRegex = /<Placemark\b[^>]*>([\s\S]*?)<\/Placemark>/gi;
+    let pmMatch;
+    while ((pmMatch = pmRegex.exec(trimmed)) !== null) {
+      const pmContent = pmMatch[1];
+      const nameM = /<name\b[^>]*>([\s\S]*?)<\/name>/i.exec(pmContent);
+      const descM = /<description\b[^>]*>([\s\S]*?)<\/description>/i.exec(pmContent);
+      const coordM = /<coordinates\b[^>]*>([\s\S]*?)<\/coordinates>/i.exec(pmContent);
+      const fullText = `${nameM ? nameM[1] : ''} ${descM ? descM[1] : ''}`.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+      if (coordM) {
+        const coords = coordM[1].trim().split(/[\s,]+/);
+        if (coords.length >= 2) {
+          const lng = parseFloat(coords[0]);
+          const lat = parseFloat(coords[1]);
+          if (!isNaN(lat) && !isNaN(lng) && lat >= 40 && lat <= 54) {
+            radars.push(buildRadarFromDetails(lat, lng, fullText));
+          }
+        }
+      }
+    }
+    if (radars.length > 0) return radars;
+  }
+
+  // 3. GPX Format
+  if (trimmed.includes('<gpx') || trimmed.includes('<wpt')) {
+    const wptRegex = /<wpt\b[^>]*lat="([-\d\.]+)"[^>]*lon="([-\d\.]+)"[^>]*>([\s\S]*?)<\/wpt>/gi;
+    let wptMatch;
+    while ((wptMatch = wptRegex.exec(trimmed)) !== null) {
+      const lat = parseFloat(wptMatch[1]);
+      const lng = parseFloat(wptMatch[2]);
+      const nameM = /<name\b[^>]*>([\s\S]*?)<\/name>/i.exec(wptMatch[3]);
+      const descM = /<desc\b[^>]*>([\s\S]*?)<\/desc>/i.exec(wptMatch[3]);
+      const fullText = `${nameM ? nameM[1] : ''} ${descM ? descM[1] : ''}`.trim();
+      if (!isNaN(lat) && !isNaN(lng) && lat >= 40 && lat <= 54) {
+        radars.push(buildRadarFromDetails(lat, lng, fullText));
+      }
+    }
+    if (radars.length > 0) return radars;
+  }
+
+  // 4. Delimited CSV / ASC / TXT
+  const lines = trimmed.split(/\r?\n/);
+  for (let rawLine of lines) {
+    let line = rawLine.trim();
+    if (!line || line.startsWith('#') || line.startsWith('//')) continue;
+    const lLower = line.toLowerCase();
+    if (lLower.startsWith('latitude') || lLower.startsWith('longitude') || lLower.startsWith('lat,') || lLower.startsWith('lon,')) continue;
+
+    let normalized = line;
+    if (line.includes(';') || line.includes('\t')) {
+      normalized = line.replace(/(\d+),(\d{3,})/g, '$1.$2');
+    }
+
+    let parts = [];
+    if (normalized.includes(';')) parts = normalized.split(';').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    else if (normalized.includes('\t')) parts = normalized.split('\t').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    else if (normalized.includes(',')) parts = parseCSVLine(normalized).map(p => p.trim());
+    else {
+      const spMatch = normalized.match(/^([-\d\.]+)\s+([-\d\.]+)(?:\s+(.*))?$/);
+      if (spMatch) parts = [spMatch[1], spMatch[2], spMatch[3] || ''];
+    }
+
+    if (parts.length >= 2) {
+      let val1 = parseFloat(parts[0]);
+      let val2 = parseFloat(parts[1]);
+      if (isNaN(val1) || isNaN(val2)) continue;
+
+      let lat, lng;
+      if (val1 >= 40 && val1 <= 54 && val2 >= -6 && val2 <= 11) {
+        lat = val1; lng = val2;
+      } else if (val2 >= 40 && val2 <= 54 && val1 >= -6 && val1 <= 11) {
+        lat = val2; lng = val1;
+      } else {
+        continue;
+      }
+
+      const desc = parts.slice(2).join(' — ').trim();
+      radars.push(buildRadarFromDetails(lat, lng, desc));
+    }
+  }
+  return radars;
+}
+
+function buildRadarFromDetails(lat, lng, desc = '', rawType = '', rawSpeed = null) {
+  const combined = `${desc} ${rawType}`.toLowerCase();
+  let rType = 'Radar fixe', rIcon = '📷', rCat = 'fixe';
+
+  if (combined.includes('chantier') || combined.includes('temporaire') || combined.includes('autonome') || combined.includes('rc_')) {
+    rType = 'Radar autonome / chantier'; rIcon = '🚧'; rCat = 'chantier';
+  } else if (combined.includes('mobile') || combined.includes('rm_') || combined.includes('mobiles') || combined.includes('police') || combined.includes('gendarmerie')) {
+    rType = 'Radar mobile'; rIcon = '🚓'; rCat = 'mobile';
+  } else if (combined.includes('feu') || combined.includes('rouge')) {
+    rType = 'Radar feu rouge'; rIcon = '🚦'; rCat = 'feu';
+  } else if (combined.includes('troncon') || combined.includes('tronçon') || combined.includes('moyenne')) {
+    rType = 'Radar tronçon'; rIcon = '⏱️'; rCat = 'troncon';
+  } else if (combined.includes('discriminant') || combined.includes('pl_')) {
+    rType = 'Radar discriminant'; rIcon = '🚛'; rCat = 'discriminant';
+  } else if (combined.includes('tourelle') || combined.includes('fusion')) {
+    rType = 'Radar tourelle'; rIcon = '🗼'; rCat = 'tourelle';
+  } else if (combined.includes('urbain')) {
+    rType = 'Radar urbain'; rIcon = '🏙️'; rCat = 'urbain';
+  }
+
+  let speed = rawSpeed;
+  if (!speed) {
+    const spM = desc.match(/\b(30|50|70|80|90|110|130)\b/);
+    speed = spM ? parseInt(spM[1]) : null;
+  }
+
+  return {
+    id: 'gdrive_' + Math.random().toString(36).slice(2, 9),
+    lat: Math.round(lat * 1e6) / 1e6,
+    lng: Math.round(lng * 1e6) / 1e6,
+    type: rType,
+    category: rCat,
+    icon: rIcon,
+    vitesse: speed,
+    emplacement: desc || 'Google Drive Cloud Sync',
+    community: rCat === 'mobile' || rCat === 'chantier',
+    source: 'gdrive'
+  };
+}
+
+async function syncGoogleDrive(isUserTriggered = false) {
+  const gdriveUrl = (STATE.settings.gdriveUrl || '').trim();
+  if (!gdriveUrl) {
+    if (isUserTriggered) toast('Veuillez d\'abord coller un lien Google Drive.');
+    return;
+  }
+
+  if (isUserTriggered) setLoader('Téléchargement depuis Google Drive…');
+  updateGdriveStatusUI('Synchronisation en cours…');
+
+  try {
+    const downloadCandidates = getGoogleDriveDownloadUrls(gdriveUrl);
+    let downloadedText = null;
+    let lastError = null;
+
+    for (const url of downloadCandidates) {
+      try {
+        downloadedText = await fetchWithCORS(url);
+        if (downloadedText && downloadedText.trim().length > 10) break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    if (!downloadedText) {
+      throw lastError || new Error('Impossible de lire le fichier depuis ce lien Google Drive');
+    }
+
+    const parsedRadars = parseGenericRadarData(downloadedText);
+    if (!parsedRadars || parsedRadars.length === 0) {
+      throw new Error('Aucun radar détecté dans ce fichier. Vérifiez le format (CSV, ASC, KML, JSON)');
+    }
+
+    // Merge into STATE.radars
+    const seenMap = new Map();
+    STATE.radars.forEach(r => {
+      const k = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+      seenMap.set(k, r);
+    });
+
+    let totalImported = 0;
+    for (const r of parsedRadars) {
+      const k = `${r.lat.toFixed(4)}_${r.lng.toFixed(4)}`;
+      const existing = seenMap.get(k);
+      if (!existing) {
+        seenMap.set(k, r);
+        STATE.radars.push(r);
+        totalImported++;
+      } else if (existing.type !== r.type && (r.type.includes('chantier') || r.type.includes('mobile'))) {
+        existing.type = r.type;
+        existing.icon = r.icon;
+        existing.category = r.category;
+        existing.emplacement = r.emplacement || existing.emplacement;
+        if (r.vitesse) existing.vitesse = r.vitesse;
+        totalImported++;
+      }
+    }
+
+    STATE.settings.gdriveLastSync = Date.now();
+    saveSettings();
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ time: Date.now(), data: STATE.radars }));
+
+    renderMarkers();
+    updateStats(Date.now());
+    setStatus(`${STATE.radars.length} radars chargés`, false);
+
+    const successMsg = `✅ <strong>${parsedRadars.length} radars trouvés</strong> (+${totalImported} nouveaux/mis à jour)`;
+    updateGdriveStatusUI(successMsg);
+
+    if (isUserTriggered) {
+      hideLoader();
+      toast(`✅ Google Drive : ${parsedRadars.length} radars synchronisés !`);
+      speakAlert(`Google Drive synchronisé : ${parsedRadars.length} radars`);
+    } else if (totalImported > 0) {
+      toast(`☁️ Google Drive : +${totalImported} radar(s) synchronisé(s)`);
+    }
+  } catch (err) {
+    console.error('Google Drive Sync Error:', err);
+    if (isUserTriggered) {
+      hideLoader();
+      toast('Erreur Google Drive : ' + err.message);
+    }
+    updateGdriveStatusUI(`❌ Erreur : ${err.message}`, true);
+  }
+}
+
+if (btnSyncGdrive) {
+  btnSyncGdrive.onclick = () => {
+    STATE.settings.gdriveUrl = (cfgGdriveUrl ? cfgGdriveUrl.value : '').trim();
+    saveSettings();
+    syncGoogleDrive(true);
+  };
+}
+
 document.getElementById('btnRefresh').onclick = async () => {
   document.getElementById('loader').classList.remove('hide');
   try {
@@ -1928,6 +2292,11 @@ document.getElementById('btnForceUpdateApp').onclick = async () => {
   initSupabase();
   hideLoader();
   startGeolocation();
+
+  // Background Auto-Sync Google Drive
+  if (STATE.settings.gdriveUrl && STATE.settings.gdriveAutoSync !== false) {
+    syncGoogleDrive(false).catch(() => {});
+  }
 })();
 </script>
 </body>
