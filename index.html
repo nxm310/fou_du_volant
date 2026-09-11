@@ -608,6 +608,14 @@
     <label>Notifications push</label>
     <label class="switch"><input type="checkbox" id="swNotif"><span class="slider-sw"></span></label>
   </div>
+  <div style="margin-top: 10px; margin-bottom: 6px;">
+    <button class="btn secondary" id="btnTestAudio" type="button" style="width: 100%; padding: 11px 14px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: rgba(10, 132, 255, 0.15); border: 1px solid rgba(10, 132, 255, 0.4); color: #64d2ff;">
+      <span>🔊</span> <span>Tester le carillon & l'annonce vocale</span>
+    </button>
+    <div style="font-size: 11px; color: var(--text-sub); margin-top: 6px; line-height: 1.35;">
+      💡 <em>Sur iPhone : vérifiez que l'interrupteur sonnerie/silencieux sur la tranche n'est pas sur orange (mode vibreur) et que le volume multimédia est monté.</em>
+    </div>
+  </div>
 
   <h3>Mode voiture</h3>
   <div class="row">
@@ -869,10 +877,10 @@ function isRadarOnCurrentRoute(r, userPos, heading, speed) {
   const crossTrackDist = Math.abs(d * Math.sin(angleRad));
   const alongTrackDist = Math.max(1, d * Math.cos(angleRad));
 
-  const speedKmh = speed * 3.6;
-  const maxCrossTrack = speedKmh > 70 ? 45 : 35;
-
-  if (speed > 2 && crossTrackDist > maxCrossTrack) {
+  // Only reject cross-track when close (< 120m) to discard adjacent parallel streets.
+  // Beyond 120m, the forward angle cone (FRONT_ANGLE) correctly guides route detection
+  // without erroneously rejecting radars on curved roads.
+  if (speed > 2 && d < 120 && crossTrackDist > 55) {
     return { match: false };
   }
 
@@ -900,9 +908,11 @@ let synthVoice = null;
 function initVoice() {
   if (!('speechSynthesis' in window)) return;
   const updateVoices = () => {
-    const voices = window.speechSynthesis.getVoices();
-    synthVoice = voices.find(v => v.lang.startsWith('fr') && v.localService) ||
-                 voices.find(v => v.lang.startsWith('fr')) || null;
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      synthVoice = voices.find(v => (v.lang === 'fr-FR' || v.lang.startsWith('fr')) && v.localService) ||
+                   voices.find(v => v.lang === 'fr-FR' || v.lang.startsWith('fr')) || null;
+    } catch (e) {}
   };
   updateVoices();
   if (window.speechSynthesis.onvoiceschanged !== undefined) {
@@ -920,12 +930,16 @@ function speakAlert(text, isUrgent = false) {
   STATE.lastSpeechTime = now;
 
   try {
-    if (isUrgent) window.speechSynthesis.cancel();
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    if (isUrgent || window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'fr-FR';
-    utterance.rate = isUrgent ? 1.15 : 1.05;
-    utterance.pitch = isUrgent ? 1.1 : 1.0;
+    utterance.rate = isUrgent ? 1.1 : 1.02;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
     if (synthVoice) utterance.voice = synthVoice;
+
     window.speechSynthesis.speak(utterance);
   } catch (e) {
     console.error('Speech error:', e);
@@ -1620,20 +1634,83 @@ function updateNearStat() {
   document.getElementById('statNear').textContent = count;
 }
 
+// ============================================================
+//  AUDIO ENGINE & CHIME GENERATOR (Optimized for iOS Safari & Mobile)
+// ============================================================
 let audioCtx = null;
-function beep(freq = 880, duration = 0.4) {
-  if (!STATE.settings.sound) return;
+let audioUnlocked = false;
+
+function unlockAudioEngine() {
+  if (audioUnlocked) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    if (audioCtx) {
+      const buf = audioCtx.createBuffer(1, 1, 22050);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+      audioUnlocked = true;
+    }
+  } catch (e) {}
+
+  try {
+    if ('speechSynthesis' in window) {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      if (!window._speechUnlocked) {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+        window._speechUnlocked = true;
+      }
+    }
+  } catch (e) {}
+}
+
+['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, unlockAudioEngine, { passive: true });
+});
+
+function playTone(freq, startOffset, dur, type = 'triangle', vol = 0.45) {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.value = freq; o.type = 'sine';
-    g.gain.setValueAtTime(0, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0.35, audioCtx.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-    o.start(); o.stop(audioCtx.currentTime + duration);
-  } catch {}
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now + startOffset);
+    gain.gain.setValueAtTime(0.0001, now + startOffset);
+    gain.gain.linearRampToValueAtTime(vol, now + startOffset + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now + startOffset);
+    osc.stop(now + startOffset + dur);
+  } catch (e) {}
+}
+
+function beep(freq = 880, duration = 0.35) {
+  if (!STATE.settings.sound) return;
+  playTone(freq, 0, duration, 'triangle', 0.45);
+}
+
+function playAlertChime(isUrgent = false) {
+  if (!STATE.settings.sound) return;
+  if (isUrgent) {
+    // 3 urgent warning pulses
+    playTone(1100, 0.00, 0.13, 'sawtooth', 0.5);
+    playTone(1500, 0.15, 0.16, 'sawtooth', 0.5);
+    playTone(1900, 0.33, 0.22, 'sawtooth', 0.5);
+  } else {
+    // Elegant two-tone radar chime (880Hz -> 1320Hz)
+    playTone(880, 0.00, 0.16, 'triangle', 0.45);
+    playTone(1320, 0.18, 0.22, 'triangle', 0.45);
+  }
 }
 
 function showAlert(r, d, isStrictMatch = false) {
@@ -1674,8 +1751,7 @@ function showAlert(r, d, isStrictMatch = false) {
     STATE.lastAlertId = r.id;
     STATE.lastAlertTime = Date.now();
 
-    beep(isOverspeed ? 1500 : (d < 300 ? 1200 : 880));
-    if (d < 300 || isOverspeed) setTimeout(() => beep(isOverspeed ? 1500 : 1200), 200);
+    playAlertChime(isOverspeed || d < 300);
 
     if (STATE.settings.vibrate && 'vibrate' in navigator) {
       navigator.vibrate(isOverspeed ? [400, 100, 400, 100, 400] : (d < 300 ? [300, 100, 300] : [200, 100, 200]));
@@ -1684,7 +1760,10 @@ function showAlert(r, d, isStrictMatch = false) {
     let speechText = `Attention, ${r.community ? prettyType(r.type) : r.type} à ${Math.round(d)} mètres.`;
     if (r.vitesse) speechText += ` Limité à ${r.vitesse} kilomètre heure.`;
     if (isOverspeed) speechText += ` Ralentissez ! Vous êtes à ${currentSpeedKmh}.`;
-    speakAlert(speechText, isOverspeed);
+
+    setTimeout(() => {
+      speakAlert(speechText, isOverspeed);
+    }, 450);
 
     if (STATE.settings.notif && 'Notification' in window && Notification.permission === 'granted') {
       new Notification(`${r.type} à ${Math.round(d)}m`, {
@@ -1995,6 +2074,18 @@ bindSwitch('swCommunity', 'community', (on) => {
   renderCommunityMarkers();
   if (on && STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
 });
+
+const btnTestAudio = document.getElementById('btnTestAudio');
+if (btnTestAudio) {
+  btnTestAudio.onclick = () => {
+    unlockAudioEngine();
+    toast('🔊 Test : Carillon + Annonce vocale...');
+    playAlertChime(false);
+    setTimeout(() => {
+      speakAlert('Attention, radar fixe à 500 mètres. Limité à 80 kilomètre heure.', true);
+    }, 450);
+  };
+}
 
 document.querySelectorAll('.flt').forEach(el => {
   const k = el.dataset.type;
