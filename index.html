@@ -1668,6 +1668,12 @@ function unlockAudioEngine() {
       }
     }
   } catch (e) {}
+
+  try {
+    if (typeof requestWakeLock === 'function') {
+      requestWakeLock();
+    }
+  } catch (e) {}
 }
 
 ['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
@@ -1813,24 +1819,111 @@ async function exitCarMode() {
   STATE.carMode = false;
   document.body.classList.remove('car-on', 'car-warning', 'car-danger', 'car-overspeed');
   document.getElementById('btnCar').classList.remove('on');
-  releaseWakeLock();
+  if (!STATE.settings.wakeLock) releaseWakeLock();
+}
+
+// ============================================================
+//  SCREEN WAKE LOCK / ANTI-VEILLE ENGINE (iOS & Android)
+// ============================================================
+let wakeVideo = null;
+
+function ensureWakeVideo() {
+  if (wakeVideo) return wakeVideo;
+  wakeVideo = document.createElement('video');
+  wakeVideo.setAttribute('playsinline', '');
+  wakeVideo.setAttribute('webkit-playsinline', '');
+  wakeVideo.setAttribute('muted', '');
+  wakeVideo.setAttribute('loop', '');
+  wakeVideo.muted = true;
+  wakeVideo.loop = true;
+  wakeVideo.style.position = 'fixed';
+  wakeVideo.style.bottom = '0';
+  wakeVideo.style.right = '0';
+  wakeVideo.style.width = '1px';
+  wakeVideo.style.height = '1px';
+  wakeVideo.style.opacity = '0.001';
+  wakeVideo.style.pointerEvents = 'none';
+  wakeVideo.src = 'data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDJpc29tYXZjMQAAAAhmcmVlAAAAGG1kYXQAAAAAAAIBAAAAHG1vb3YAAABsbXZoZAAAAAB34+Fcd+PhXAAAA+gAAAAAAAEAAAEAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAMdHJhawAAAFx0a2hkAAAABnfj4V134+FcAAAAAQAAAAEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAABpdGVtcAAAAA==';
+  document.body.appendChild(wakeVideo);
+  return wakeVideo;
+}
+
+function playWakeVideo() {
+  if (!STATE.settings.wakeLock) return;
+  try {
+    const v = ensureWakeVideo();
+    if (v && v.paused) {
+      v.play().catch(() => {});
+    }
+  } catch (e) {}
+}
+
+function pauseWakeVideo() {
+  try {
+    if (wakeVideo && !wakeVideo.paused) {
+      wakeVideo.pause();
+    }
+  } catch (e) {}
 }
 
 async function requestWakeLock() {
-  if (!STATE.settings.wakeLock || !('wakeLock' in navigator)) return;
-  try {
-    STATE.wakeLock = await navigator.wakeLock.request('screen');
-    STATE.wakeLock.addEventListener('release', () => { STATE.wakeLock = null; });
-  } catch {}
+  if (!STATE.settings.wakeLock) return;
+
+  // 1. Native Screen Wake Lock API (Android, iOS 16.4+, Desktop)
+  if ('wakeLock' in navigator) {
+    try {
+      if (!STATE.wakeLock || STATE.wakeLock.released) {
+        STATE.wakeLock = await navigator.wakeLock.request('screen');
+        STATE.wakeLock.addEventListener('release', () => {
+          STATE.wakeLock = null;
+          if (STATE.settings.wakeLock && document.visibilityState === 'visible') {
+            setTimeout(requestWakeLock, 1200);
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  // 2. iOS Safari Silent Video Keep-Awake (100% reliable anti-sleep on all iPhones)
+  playWakeVideo();
 }
 
 function releaseWakeLock() {
-  if (STATE.wakeLock) { STATE.wakeLock.release().catch(() => {}); STATE.wakeLock = null; }
+  if (STATE.wakeLock) {
+    try { STATE.wakeLock.release().catch(() => {}); } catch (e) {}
+    STATE.wakeLock = null;
+  }
+  pauseWakeVideo();
 }
 
+// Auto-reactivate wake lock whenever app becomes visible or focused
 document.addEventListener('visibilitychange', () => {
-  if (STATE.carMode && document.visibilityState === 'visible') requestWakeLock();
+  if (document.visibilityState === 'visible' && STATE.settings.wakeLock) {
+    requestWakeLock();
+  } else if (document.visibilityState === 'hidden') {
+    pauseWakeVideo();
+  }
 });
+
+window.addEventListener('pageshow', () => {
+  if (STATE.settings.wakeLock) requestWakeLock();
+});
+
+window.addEventListener('focus', () => {
+  if (STATE.settings.wakeLock) requestWakeLock();
+});
+
+// Periodic heartbeat (every 25s) to guarantee screen never turns off while driving
+setInterval(() => {
+  if (STATE.settings.wakeLock && document.visibilityState === 'visible') {
+    if (!STATE.wakeLock && 'wakeLock' in navigator) {
+      requestWakeLock();
+    }
+    if (wakeVideo && wakeVideo.paused) {
+      playWakeVideo();
+    }
+  }
+}, 25000);
 
 function maybeAutoCarMode() {
   if (!STATE.settings.autoCar) return;
@@ -2069,7 +2162,10 @@ bindSwitch('swNotif', 'notif', async (on) => {
   }
 });
 bindSwitch('swAutoCar', 'autoCar');
-bindSwitch('swWakeLock', 'wakeLock');
+bindSwitch('swWakeLock', 'wakeLock', (on) => {
+  if (on) requestWakeLock();
+  else releaseWakeLock();
+});
 bindSwitch('swCommunity', 'community', (on) => {
   renderCommunityMarkers();
   if (on && STATE.userPos) loadCommunityRadars(STATE.userPos.lat, STATE.userPos.lng);
@@ -2748,6 +2844,7 @@ document.getElementById('btnForceUpdateApp').onclick = async () => {
   initSupabase();
   hideLoader();
   startGeolocation();
+  await requestWakeLock();
 
   // Background Auto-Sync Google Drive
   if (STATE.settings.gdriveUrl && STATE.settings.gdriveAutoSync !== false) {
