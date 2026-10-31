@@ -5,10 +5,34 @@
 import { state } from '../core/state.js';
 
 let map = null;
+let currentTileLayer = null;
 let markerLayer = null;
 let userMarker = null;
 let isUserInteracting = false;
 let activeCategoryFilter = 'all';
+
+export const TILE_PROVIDERS = {
+  dark: {
+    name: 'Sombre OLED (CartoDB)',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    options: { maxZoom: 19, subdomains: 'abcd' }
+  },
+  osmfr: {
+    name: 'OpenStreetMap France',
+    url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+    options: { maxZoom: 20 }
+  },
+  satellite: {
+    name: 'Satellite Aérien (Esri)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    options: { maxZoom: 19 }
+  },
+  osm: {
+    name: 'OpenStreetMap Standard',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: { maxZoom: 19 }
+  }
+};
 
 const CATEGORY_COLORS = {
   fixe: '#3a86ff',
@@ -45,11 +69,8 @@ export class MapView {
       attributionControl: false
     }).setView([46.603354, 1.888334], 6);
 
-    // Fond de carte sombre CartoDB Dark Matter
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(map);
+    // Chargement du fond de carte initial
+    this.setTileLayer(state.settings.mapTileLayer || 'dark');
 
     markerLayer = L.layerGroup().addTo(map);
 
@@ -59,10 +80,31 @@ export class MapView {
     });
   }
 
+  setTileLayer(providerKey) {
+    if (!map) return;
+    const provider = TILE_PROVIDERS[providerKey] || TILE_PROVIDERS.dark;
+
+    if (currentTileLayer) {
+      map.removeLayer(currentTileLayer);
+    }
+
+    currentTileLayer = L.tileLayer(provider.url, provider.options).addTo(map);
+    state.updateSettings({ mapTileLayer: providerKey });
+  }
+
   initEvents() {
     state.on('positionUpdated', (pos) => this.handlePosition(pos));
     state.on('alertsUpdated', ({ alerts, nearest }) => this.handleAlert(nearest));
     state.on('radarsLoaded', () => this.renderVisibleMarkers());
+
+    window.addEventListener('tileLayerChanged', (e) => {
+      this.setTileLayer(e.detail);
+      const btnTile = document.getElementById('btnToggleTile');
+      if (btnTile) {
+        const icons = { dark: '🌙', osmfr: '🇫🇷', satellite: '🛰️', osm: '🗺️' };
+        btnTile.textContent = icons[e.detail] || '🗺️';
+      }
+    });
 
     const btnRecenter = document.getElementById('btnRecenter');
     if (btnRecenter) {
@@ -71,6 +113,21 @@ export class MapView {
         if (state.runtime.userPos && map) {
           map.setView([state.runtime.userPos.lat, state.runtime.userPos.lng], 15, { animate: true });
         }
+      });
+    }
+
+    const btnTile = document.getElementById('btnToggleTile');
+    if (btnTile) {
+      btnTile.addEventListener('click', () => {
+        const keys = Object.keys(TILE_PROVIDERS);
+        const current = state.settings.mapTileLayer || 'dark';
+        const nextIdx = (keys.indexOf(current) + 1) % keys.length;
+        const nextKey = keys[nextIdx];
+        this.setTileLayer(nextKey);
+
+        const icons = { dark: '🌙', osmfr: '🇫🇷', satellite: '🛰️', osm: '🗺️' };
+        btnTile.textContent = icons[nextKey] || '🗺️';
+        btnTile.title = `Fond de carte : ${TILE_PROVIDERS[nextKey].name}`;
       });
     }
 

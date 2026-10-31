@@ -55,6 +55,7 @@ export class ModalsController {
     // Réglages inputs
     const distInput = document.getElementById('cfgDistance');
     const distVal = document.getElementById('cfgDistanceVal');
+    const selTile = document.getElementById('cfgTileLayer');
     const swSound = document.getElementById('cfgSound');
     const swVoice = document.getElementById('cfgVoice');
     const swOverspeed = document.getElementById('cfgOverspeed');
@@ -66,6 +67,13 @@ export class ModalsController {
         const val = parseInt(e.target.value, 10);
         if (distVal) distVal.textContent = `${val} m`;
         state.updateSettings({ distance: val });
+      });
+    }
+
+    if (selTile) {
+      selTile.addEventListener('change', (e) => {
+        state.updateSettings({ mapTileLayer: e.target.value });
+        window.dispatchEvent(new CustomEvent('tileLayerChanged', { detail: e.target.value }));
       });
     }
 
@@ -96,6 +104,7 @@ export class ModalsController {
     const s = state.settings;
     const distInput = document.getElementById('cfgDistance');
     const distVal = document.getElementById('cfgDistanceVal');
+    const selTile = document.getElementById('cfgTileLayer');
     const swSound = document.getElementById('cfgSound');
     const swVoice = document.getElementById('cfgVoice');
     const swOverspeed = document.getElementById('cfgOverspeed');
@@ -104,6 +113,7 @@ export class ModalsController {
 
     if (distInput) distInput.value = s.distance;
     if (distVal) distVal.textContent = `${s.distance} m`;
+    if (selTile) selTile.value = s.mapTileLayer || 'dark';
     if (swSound) swSound.checked = s.sound;
     if (swVoice) swVoice.checked = s.voice;
     if (swOverspeed) swOverspeed.checked = s.overspeedAlert;

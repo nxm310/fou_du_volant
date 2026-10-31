@@ -81,8 +81,13 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 2. Tuiles de carte CartoDB / OSM : Cache avec fallback réseau
-  if (url.hostname.includes('basemaps.cartocdn.com') || url.hostname.includes('tile.openstreetmap.org')) {
+  // 2. Tuiles de carte CartoDB / OSM / Esri / OSM-FR : Cache avec fallback réseau
+  if (
+    url.hostname.includes('basemaps.cartocdn.com') ||
+    url.hostname.includes('tile.openstreetmap.org') ||
+    url.hostname.includes('tile.openstreetmap.fr') ||
+    url.hostname.includes('arcgisonline.com')
+  ) {
     e.respondWith(
       caches.open(RUNTIME_CACHE).then(async (cache) => {
         const cached = await cache.match(req);

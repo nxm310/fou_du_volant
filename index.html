@@ -53,6 +53,7 @@
 
     <!-- Boutons flottants carte -->
     <aside class="map-fab-stack">
+      <button class="fab-btn" id="btnToggleTile" title="Changer de fond de carte (100% libre)" aria-label="Changer de fond de carte">🌙</button>
       <button class="fab-btn" id="btnRecenter" title="Centrer sur ma position" aria-label="Centrer sur ma position">🎯</button>
     </aside>
 
@@ -133,6 +134,18 @@
                 <input type="range" id="cfgDistance" min="300" max="1500" step="50" value="750" style="width:110px;">
                 <span id="cfgDistanceVal" style="font-size:13px; font-weight:700; width:52px; text-align:right;">750 m</span>
               </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Fond de carte</span>
+                <span class="settings-label-desc">Cartographie libre sans clé API</span>
+              </div>
+              <select id="cfgTileLayer" style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 8px; font-size:13px; color:var(--text);">
+                <option value="dark">🌙 Sombre OLED (CartoDB)</option>
+                <option value="osmfr">🇫🇷 OpenStreetMap France</option>
+                <option value="satellite">🛰️ Satellite Aérien (Esri)</option>
+                <option value="osm">🗺️ OpenStreetMap Standard</option>
+              </select>
             </div>
             <div class="settings-row">
               <div class="settings-label">
