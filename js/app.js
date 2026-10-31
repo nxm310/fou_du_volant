@@ -28,14 +28,17 @@ class App {
     // 4. Enregistrement du Service Worker PWA
     this.registerServiceWorker();
 
-    // 5. Déblocage du contexte audio au premier contact
-    const unlockAudio = () => {
+    // 5. Déblocage du contexte audio et du GPS au premier geste utilisateur
+    const unlockUserGesture = () => {
       soundEngine.initVoice();
-      document.removeEventListener('click', unlockAudio);
-      document.removeEventListener('touchstart', unlockAudio);
+      if (!tracker.isActive || !state.runtime.userPos) {
+        tracker.start();
+      }
+      document.removeEventListener('click', unlockUserGesture);
+      document.removeEventListener('touchstart', unlockUserGesture);
     };
-    document.addEventListener('click', unlockAudio, { once: true });
-    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('click', unlockUserGesture, { once: true });
+    document.addEventListener('touchstart', unlockUserGesture, { once: true });
   }
 
   registerServiceWorker() {

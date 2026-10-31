@@ -62,6 +62,12 @@
   box-shadow: 0 0 10px var(--success);
 }
 
+.gps-status-indicator.error,
+.gps-dot.error {
+  background: var(--danger) !important;
+  box-shadow: 0 0 10px var(--danger) !important;
+}
+
 .gps-text {
   font-size: 13px;
   font-weight: 600;
@@ -291,4 +297,65 @@
 @keyframes userPulse {
   0% { transform: scale(1); opacity: 0.8; }
   100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Bannière d'avertissement HTTP / Contexte non sécurisé */
+.insecure-notice-banner {
+  position: fixed;
+  top: calc(var(--safe-top) + 65px);
+  left: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: rgba(20, 20, 25, 0.95);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 69, 58, 0.4);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 69, 58, 0.2);
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.insecure-notice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.btn-close-notice {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.btn-notice-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 10px;
+  transition: opacity 0.2s;
+  width: 100%;
+  text-align: center;
+}
+
+.btn-notice-action:active {
+  opacity: 0.85;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

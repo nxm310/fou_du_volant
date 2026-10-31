@@ -31,6 +31,7 @@ export class CockpitHUD {
   initEvents() {
     // Écoute du store
     state.on('positionUpdated', (pos) => this.updatePosition(pos));
+    state.on('gpsStatusChanged', (status) => this.updateGpsStatus(status));
     state.on('roadUpdated', (road) => this.updateRoad(road));
     state.on('alertsUpdated', ({ alerts, nearest }) => this.updateAlert(nearest));
     state.on('overspeedChanged', (isOver) => this.updateOverspeed(isOver));
@@ -55,6 +56,15 @@ export class CockpitHUD {
           dialog.showModal();
         }
       });
+    }
+  }
+
+  updateGpsStatus(status) {
+    if (this.gpsAccEl) {
+      this.gpsAccEl.textContent = status.active ? `GPS ±${state.runtime.gpsAccuracy || 0}m` : (status.error ? 'ERR' : 'GPS');
+    }
+    if (this.gpsDotEl) {
+      this.gpsDotEl.className = 'gps-dot' + (status.active ? ' active' : status.error ? ' error' : '');
     }
   }
 

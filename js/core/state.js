@@ -40,6 +40,7 @@ class StateStore {
       isOverspeed: false,
       gpsAccuracy: null,
       gpsActive: false,
+      gpsStatus: { active: false, error: null, message: 'Recherche GPS...' },
       isMuted: false,
       radars: [],             // Tous les radars chargés
       totalRadars: 0,
@@ -114,6 +115,12 @@ class StateStore {
     this.runtime.gpsActive = true;
     this.runtime.gpsAccuracy = posData.accuracy;
     this.emit('positionUpdated', posData);
+  }
+
+  setGpsStatus(status) {
+    this.runtime.gpsActive = status.active;
+    this.runtime.gpsStatus = status;
+    this.emit('gpsStatusChanged', status);
   }
 
   setRoad(road) {

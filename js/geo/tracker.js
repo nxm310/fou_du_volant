@@ -1,5 +1,7 @@
 /**
  * Fou du Volant - Geolocation Tracker & Road Snapping Engine
+ * Gestion robuste pour smartphone (iOS Safari / Android Chrome)
+ * Deux phases d'acquisition : fix réseau ultra-rapide + suivi GPS haute précision
  */
 
 import { state } from '../core/state.js';
@@ -15,28 +17,83 @@ let autoCarModeTimer = null;
 export class GeoTracker {
   constructor() {
     this.isActive = false;
+    this.hasFirstFix = false;
+    this.retryTimeout = null;
+  }
+
+  isSecure() {
+    return window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   }
 
   start() {
+    if (!this.isSecure()) {
+      console.warn('⚠️ Contexte non sécurisé HTTP : le navigateur mobile bloque la géolocalisation.');
+      state.setGpsStatus({
+        active: false,
+        error: 'insecure',
+        message: 'HTTPS requis sur mobile (HTTP bloque le GPS)'
+      });
+      return;
+    }
+
     if (!('geolocation' in navigator)) {
-      alert("La géolocalisation n'est pas supportée par votre navigateur.");
+      state.setGpsStatus({
+        active: false,
+        error: 'unsupported',
+        message: 'GPS non supporté sur ce navigateur'
+      });
       return;
     }
 
     if (this.isActive) return;
     this.isActive = true;
 
+    state.setGpsStatus({
+      active: false,
+      error: null,
+      message: 'Recherche position...'
+    });
+
+    // 1. Étape 1 : Fix réseau / wifi ultra-rapide (< 0.5s)
+    if (!this.hasFirstFix) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (!this.hasFirstFix) {
+            console.log('📍 Premier fix réseau obtenu :', pos.coords.latitude, pos.coords.longitude);
+            this.handleSuccess(pos, false);
+          }
+        },
+        (err) => {
+          console.log('Fix rapide réseau non disponible, attente satellites...', err.message);
+        },
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+      );
+    }
+
+    // 2. Étape 2 : Suivi continu par satellites (GPS haute précision)
     const options = {
       enableHighAccuracy: true,
       maximumAge: 1000,
-      timeout: 10000
+      timeout: 25000 // 25s pour laisser le temps au GPS mobile de se verrouiller
     };
 
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+
     watchId = navigator.geolocation.watchPosition(
-      (pos) => this.handleSuccess(pos),
+      (pos) => this.handleSuccess(pos, true),
       (err) => this.handleError(err),
       options
     );
+  }
+
+  requestPosition() {
+    // Méthode de relance explicite sur tap utilisateur
+    console.log('Demande de localisation initiée par l\'utilisateur...');
+    this.isActive = false;
+    this.hasFirstFix = false;
+    this.start();
   }
 
   stop() {
@@ -44,10 +101,15 @@ export class GeoTracker {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
     }
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
     this.isActive = false;
   }
 
-  handleSuccess(position) {
+  handleSuccess(position, isHighAccuracy = true) {
+    this.hasFirstFix = true;
     const coords = position.coords;
     const now = Date.now();
 
@@ -58,7 +120,6 @@ export class GeoTracker {
     if (coords.speed !== null && !isNaN(coords.speed) && coords.speed >= 0) {
       speedKmh = Math.round(coords.speed * 3.6);
     } else if (lastPosition) {
-      // Fallback calcul manuel de la vitesse entre 2 points
       const dt = (now - lastPosition.time) / 1000;
       if (dt > 0.5 && dt < 10) {
         const dist = haversineMeters(
@@ -79,13 +140,13 @@ export class GeoTracker {
       }
     }
 
-    // Lissage léger de la vitesse
     const smoothed = Math.max(0, Math.min(speedKmh, 250));
+    const accuracy = Math.round(coords.accuracy || 0);
 
     const posData = {
       lat: coords.latitude,
       lng: coords.longitude,
-      accuracy: Math.round(coords.accuracy || 0),
+      accuracy: accuracy,
       speed: smoothed,
       heading: (heading !== null && !isNaN(heading)) ? Math.round(heading) : null,
       altitude: coords.altitude ? Math.round(coords.altitude) : null,
@@ -99,6 +160,11 @@ export class GeoTracker {
     };
 
     state.updatePosition(posData);
+    state.setGpsStatus({
+      active: true,
+      error: null,
+      message: `${smoothed} km/h • ±${accuracy}m`
+    });
 
     // Détection de la route actuelle (OSRM)
     this.checkRoadSnapping(coords.latitude, coords.longitude, smoothed);
@@ -111,12 +177,43 @@ export class GeoTracker {
   }
 
   handleError(err) {
-    console.warn('Erreur GPS :', err.message);
+    console.warn('Erreur GPS :', err.code, err.message);
+    let msg = 'Signal GPS introuvable';
+    let errType = 'error';
+
+    switch (err.code) {
+      case 1: // PERMISSION_DENIED
+        msg = 'GPS refusé : autorisez l\'accès localisation dans les Réglages';
+        errType = 'denied';
+        break;
+      case 2: // POSITION_UNAVAILABLE
+        msg = 'Position indisponible (activez le GPS)';
+        errType = 'unavailable';
+        break;
+      case 3: // TIMEOUT
+        msg = 'Signal faible : attente satellites...';
+        errType = 'timeout';
+        if (!this.retryTimeout && this.isActive) {
+          this.retryTimeout = setTimeout(() => {
+            this.retryTimeout = null;
+            if (this.isActive) {
+              this.isActive = false;
+              this.start();
+            }
+          }, 3000);
+        }
+        break;
+    }
+
+    state.setGpsStatus({
+      active: false,
+      error: errType,
+      message: msg
+    });
   }
 
   async checkRoadSnapping(lat, lng, speedKmh) {
     const now = Date.now();
-    // Interrogation OSRM au maximum une fois toutes les 6 secondes pour préserver le réseau
     if (now - lastRoadQueryTime < 6000) return;
     lastRoadQueryTime = now;
 
@@ -129,8 +226,6 @@ export class GeoTracker {
       if (data.waypoints && data.waypoints.length > 0) {
         const wp = data.waypoints[0];
         const rawName = wp.name || '';
-
-        // Détection référence routière (A6, RN20, D950, etc.)
         const refMatch = rawName.match(/\b([A|N|D]\s?\d{1,4}[A-Z]?)\b/i);
         const ref = refMatch ? refMatch[0].toUpperCase().replace(/\s+/g, '') : '';
 
@@ -141,7 +236,7 @@ export class GeoTracker {
         state.setRoad(cachedRoad);
       }
     } catch (e) {
-      // Échec silencieux (pas de réseau)
+      // Échec silencieux
     }
   }
 
@@ -155,7 +250,7 @@ export class GeoTracker {
             state.toggleCarMode(true);
           }
           autoCarModeTimer = null;
-        }, 3000); // Confirmation de 3s à plus de 25 km/h
+        }, 3000);
       }
     } else if (speedKmh < 10) {
       if (autoCarModeTimer) {
@@ -174,15 +269,9 @@ export class GeoTracker {
 
     for (const item of candidates) {
       const r = item.radar;
-
-      // Filtre catégorie désactivée
       const cat = r.category || 'fixe';
       if (state.settings.filterTypes[cat] === false) continue;
-
-      // Filtre couloir de trajectoire (angle avant)
       if (!isRadarAhead(r, pos, pos.heading, pos.speed)) continue;
-
-      // Filtre compatibilité de route
       if (!isSameRoadOrCompatible(r.route, cachedRoad)) continue;
 
       activeAlerts.push(item);

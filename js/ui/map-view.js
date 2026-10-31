@@ -3,6 +3,7 @@
  */
 
 import { state } from '../core/state.js';
+import { tracker } from '../geo/tracker.js';
 
 let map = null;
 let currentTileLayer = null;
@@ -107,6 +108,7 @@ export class MapView {
 
   initEvents() {
     state.on('positionUpdated', (pos) => this.handlePosition(pos));
+    state.on('gpsStatusChanged', (status) => this.handleGpsStatus(status));
     state.on('alertsUpdated', ({ alerts, nearest }) => this.handleAlert(nearest));
     state.on('radarsLoaded', () => this.renderVisibleMarkers());
 
@@ -119,12 +121,26 @@ export class MapView {
       }
     });
 
+    const gpsPill = document.getElementById('mapGpsPill');
+    if (gpsPill) {
+      gpsPill.style.cursor = 'pointer';
+      gpsPill.addEventListener('click', () => {
+        if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+          this.showInsecureModal();
+          return;
+        }
+        tracker.requestPosition();
+      });
+    }
+
     const btnRecenter = document.getElementById('btnRecenter');
     if (btnRecenter) {
       btnRecenter.addEventListener('click', () => {
         isUserInteracting = false;
         if (state.runtime.userPos && map) {
           map.setView([state.runtime.userPos.lat, state.runtime.userPos.lng], 15, { animate: true });
+        } else {
+          tracker.requestPosition();
         }
       });
     }
@@ -168,6 +184,49 @@ export class MapView {
 
         this.renderVisibleMarkers();
       });
+    });
+  }
+
+  handleGpsStatus(status) {
+    if (this.gpsTextEl) {
+      this.gpsTextEl.textContent = status.message;
+    }
+    if (this.gpsDotEl) {
+      this.gpsDotEl.className = 'gps-status-indicator' +
+        (status.active ? ' active' : status.error ? ' error' : '');
+    }
+    if (status.error === 'insecure') {
+      this.showInsecureModal();
+    }
+  }
+
+  showInsecureModal() {
+    if (document.getElementById('insecureNotice')) return;
+
+    const notice = document.createElement('div');
+    notice.id = 'insecureNotice';
+    notice.className = 'insecure-notice-banner';
+    notice.innerHTML = `
+      <div class="insecure-notice-content">
+        <div class="insecure-notice-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:20px;">🔒</span>
+            <span>HTTPS requis pour le GPS mobile</span>
+          </div>
+          <button class="btn-close-notice" id="btnCloseInsecure" aria-label="Fermer">✕</button>
+        </div>
+        <p style="font-size:12px; margin:8px 0 12px; color:#cccccc; line-height:1.4;">
+          iOS Safari et Android Chrome interdisent la géolocalisation en HTTP non sécurisé (<em>${location.host}</em>). Pour activer le GPS en temps réel, ouvrez la version sécurisée :
+        </p>
+        <a href="https://nxm310.github.io/fou_du_volant/" class="btn-notice-action">
+          👉 Basculer sur la version HTTPS (GitHub Pages)
+        </a>
+      </div>
+    `;
+    document.body.appendChild(notice);
+
+    document.getElementById('btnCloseInsecure')?.addEventListener('click', () => {
+      notice.remove();
     });
   }
 
