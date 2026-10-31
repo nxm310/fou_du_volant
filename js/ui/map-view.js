@@ -13,24 +13,34 @@ let activeCategoryFilter = 'all';
 
 export const TILE_PROVIDERS = {
   dark: {
-    name: 'Sombre OLED (CartoDB)',
+    name: 'Sombre OLED Conduite',
+    icon: '🌙',
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     options: { maxZoom: 19, subdomains: 'abcd' }
   },
+  google_traffic: {
+    name: 'Google Maps Trafic Direct',
+    icon: '🚦',
+    url: 'https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
+  },
+  google_hybrid: {
+    name: 'Google Maps Satellite HD',
+    icon: '🛰️',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
+  },
+  google_roads: {
+    name: 'Google Maps Routier',
+    icon: '🛣️',
+    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
+  },
   osmfr: {
     name: 'OpenStreetMap France',
+    icon: '🇫🇷',
     url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
     options: { maxZoom: 20 }
-  },
-  satellite: {
-    name: 'Satellite Aérien (Esri)',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    options: { maxZoom: 19 }
-  },
-  osm: {
-    name: 'OpenStreetMap Standard',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    options: { maxZoom: 19 }
   }
 };
 
@@ -100,9 +110,9 @@ export class MapView {
     window.addEventListener('tileLayerChanged', (e) => {
       this.setTileLayer(e.detail);
       const btnTile = document.getElementById('btnToggleTile');
-      if (btnTile) {
-        const icons = { dark: '🌙', osmfr: '🇫🇷', satellite: '🛰️', osm: '🗺️' };
-        btnTile.textContent = icons[e.detail] || '🗺️';
+      if (btnTile && TILE_PROVIDERS[e.detail]) {
+        btnTile.textContent = TILE_PROVIDERS[e.detail].icon || '🗺️';
+        btnTile.title = `Fond : ${TILE_PROVIDERS[e.detail].name}`;
       }
     });
 
@@ -125,9 +135,9 @@ export class MapView {
         const nextKey = keys[nextIdx];
         this.setTileLayer(nextKey);
 
-        const icons = { dark: '🌙', osmfr: '🇫🇷', satellite: '🛰️', osm: '🗺️' };
-        btnTile.textContent = icons[nextKey] || '🗺️';
-        btnTile.title = `Fond de carte : ${TILE_PROVIDERS[nextKey].name}`;
+        const provider = TILE_PROVIDERS[nextKey];
+        btnTile.textContent = provider.icon || '🗺️';
+        btnTile.title = `Fond : ${provider.name}`;
       });
     }
 
