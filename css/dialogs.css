@@ -1,0 +1,228 @@
+/**
+ * Fou du Volant - Dialogs, Modals & Sheets (Modern Web Guidance Compliant)
+ */
+
+dialog:modal {
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  width: min(92vw, 480px);
+  max-height: 85vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.modal-header {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.btn-close-modal {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.btn-close-modal:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Groupes de réglages */
+.settings-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.settings-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-label-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-label-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Switch iOS */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: 0.2s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+
+input:checked + .slider {
+  background-color: var(--accent);
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+/* Grille de Signalement Rapide 1-Tap */
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.report-option-btn {
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: transform 0.1s, border-color 0.2s, background-color 0.2s;
+}
+
+.report-option-btn:active {
+  transform: scale(0.95);
+  border-color: var(--accent);
+  background-color: rgba(10, 132, 255, 0.15);
+}
+
+.report-option-icon {
+  font-size: 32px;
+}
+
+.report-option-label {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Zone Drag & Drop Lufop */
+.dropzone-container {
+  border: 2px dashed var(--border);
+  border-radius: 18px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.dropzone-container.dragover {
+  border-color: var(--accent);
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.dropzone-icon {
+  font-size: 40px;
+}
+
+.dropzone-text {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.dropzone-text strong {
+  color: var(--text);
+}

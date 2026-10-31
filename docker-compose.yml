@@ -1,0 +1,16 @@
+services:
+  fou-du-volant:
+    build: .
+    container_name: fou-du-volant
+    restart: unless-stopped
+    ports:
+      - "8087:80"
+    environment:
+      - PORT=80
+    labels:
+      - "gethomepage.name=Fou du Volant"
+      - "gethomepage.description=Assistant radars France, cockpit HUD & alertes"
+      - "gethomepage.group=Atelier & Véhicules"
+      - "gethomepage.icon=/icons/radar.svg"
+      - "gethomepage.href=https://radars.goldohrack.fr"
+      - "gethomepage.ping=http://192.168.50.174:8087/health"

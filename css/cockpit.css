@@ -1,0 +1,319 @@
+/**
+ * Fou du Volant - Cockpit HUD (Head-Up Display OLED)
+ * Lisibilité maximale à haute vitesse, contraste pur, zéro éblouissement
+ */
+
+.cockpit-view {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background-color: #000000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 12px) calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 16px) calc(var(--safe-left) + 16px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.98);
+}
+
+.cockpit-view.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* En-tête Cockpit */
+.cockpit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.road-pill {
+  flex: 1;
+  max-width: 480px;
+  background: var(--surface-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.road-icon {
+  font-size: 18px;
+}
+
+.road-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cockpit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--surface-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text);
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.hud-btn:active {
+  transform: scale(0.92);
+  background-color: var(--surface-2);
+}
+
+/* Zone Centrale : Compteur de vitesse & Panneau VMA */
+.cockpit-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.speedometer-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.speed-value {
+  font-size: clamp(80px, 20vw, 128px);
+  font-weight: 800;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -3px;
+  color: #ffffff;
+}
+
+.speed-unit {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+.gps-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+.gps-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--text-dim);
+}
+
+.gps-dot.active {
+  background-color: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+/* Panneau de Limitation Officiel Français (VMA) */
+.speed-limit-sign {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 11px solid #d91c1c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.speed-limit-sign.hidden {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.speed-limit-number {
+  color: #000000;
+  font-size: 38px;
+  font-weight: 900;
+  font-family: var(--font-sans);
+  letter-spacing: -1.5px;
+}
+
+/* Carte d'Alerte Radar */
+.cockpit-alert-card {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 12px;
+  background: var(--surface-card);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+}
+
+.cockpit-alert-card.idle {
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.7;
+}
+
+.cockpit-alert-card.warning {
+  border-color: var(--warning);
+  box-shadow: 0 0 25px var(--warning-glow);
+}
+
+.cockpit-alert-card.overspeed {
+  border-color: var(--danger);
+  background: rgba(45, 10, 10, 0.9);
+  animation: dangerPulse 0.9s infinite alternate;
+}
+
+@keyframes dangerPulse {
+  0% { box-shadow: 0 0 15px rgba(255, 69, 58, 0.4); }
+  100% { box-shadow: 0 0 45px rgba(255, 69, 58, 0.95); }
+}
+
+.alert-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.alert-info-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.alert-icon-badge {
+  font-size: 24px;
+}
+
+.alert-distance-counter {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.alert-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.alert-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s linear, background-color 0.3s ease;
+}
+
+.cockpit-alert-card.warning .alert-progress-bar {
+  background: var(--warning);
+}
+
+.cockpit-alert-card.overspeed .alert-progress-bar {
+  background: var(--danger);
+}
+
+/* Bouton Signalement XXL au pouce */
+.cockpit-bottom {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.btn-report-xxl {
+  width: 100%;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 69, 58, 0.25) 0%, rgba(255, 69, 58, 0.15) 100%);
+  border: 1.5px solid rgba(255, 69, 58, 0.5);
+  color: #ff453a;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(255, 69, 58, 0.2);
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.btn-report-xxl:active {
+  transform: scale(0.97);
+  background: rgba(255, 69, 58, 0.35);
+}
+
+/* Adaptation Mode Paysage (Support Voiture Tablette / Téléphone horizontal) */
+@media (orientation: landscape) and (min-height: 320px) {
+  .cockpit-view {
+    padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 16px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 16px);
+  }
+
+  .cockpit-center {
+    max-width: 100%;
+    justify-content: space-around;
+  }
+
+  .speed-value {
+    font-size: clamp(70px, 16vh, 110px);
+  }
+
+  .cockpit-alert-card {
+    max-width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .btn-report-xxl {
+    height: 52px;
+  }
+}

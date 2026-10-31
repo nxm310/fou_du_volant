@@ -1,16 +1,32 @@
-// Service worker - Radars France PWA (Auto-Update Engine)
-const VERSION = 'v2.7.9';
-const SHELL_CACHE = `shell-${VERSION}`;
-const RUNTIME_CACHE = `runtime-${VERSION}`;
+// Service Worker - Fou du Volant PWA v3.0.0
+const VERSION = 'v3.0.0';
+const SHELL_CACHE = `fdv-shell-${VERSION}`;
+const RUNTIME_CACHE = `fdv-runtime-${VERSION}`;
 
-const SHELL = [
+const SHELL_ASSETS = [
   './',
   './index.html',
-  './config.js',
   './radars.json',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './css/base.css',
+  './css/cockpit.css',
+  './css/map.css',
+  './css/dialogs.css',
+  './js/app.js',
+  './js/core/state.js',
+  './js/core/storage.js',
+  './js/geo/spatial-index.js',
+  './js/geo/corridor.js',
+  './js/geo/tracker.js',
+  './js/audio/sound.js',
+  './js/ui/hud.js',
+  './js/ui/map-view.js',
+  './js/ui/modals.js',
+  './js/ui/wakelock.js',
+  './js/data/radar-service.js',
+  './js/data/lufop-parser.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
@@ -18,15 +34,16 @@ const SHELL = [
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL).catch(() => {}))
+    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS).catch((err) => {
+      console.warn('Erreur mise en cache initiale :', err);
+    }))
   );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE)
-        .map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -42,20 +59,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // 1. Ignore non-HTTP schemes
   if (!url.protocol.startsWith('http')) return;
 
-  // 2. Bypass Service Worker entirely for dynamic external APIs & Proxies
-  if (url.origin !== location.origin &&
-      !url.hostname.includes('unpkg.com') &&
-      !url.hostname.includes('jsdelivr.net') &&
-      !url.hostname.includes('cdnjs.cloudflare.com') &&
-      !url.hostname.endsWith('tile.openstreetmap.org')) {
-    return;
-  }
-
-  // 3. Navigation / HTML & Config : Network-First avec Fallback Cache
-  if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('config.js') || url.pathname === '/' || url.pathname.endsWith('/fou_du_volant/')) {
+  // 1. Navigation & HTML : Stale-While-Revalidate avec fallback cache
+  if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/' || url.pathname.endsWith('/fou_du_volant/')) {
     e.respondWith(
       fetch(req).then((res) => {
         if (res.ok) {
@@ -68,14 +75,14 @@ self.addEventListener('fetch', (e) => {
         if (cached) return cached;
         const indexCached = await caches.match('./index.html');
         if (indexCached) return indexCached;
-        return new Response('Hors-ligne', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        return new Response('Mode hors-ligne', { status: 503, headers: { 'Content-Type': 'text/plain' } });
       })
     );
     return;
   }
 
-  // 4. Tuiles OpenStreetMap : Cache-First / Stale-While-Revalidate
-  if (url.hostname.endsWith('tile.openstreetmap.org')) {
+  // 2. Tuiles de carte CartoDB / OSM : Cache avec fallback réseau
+  if (url.hostname.includes('basemaps.cartocdn.com') || url.hostname.includes('tile.openstreetmap.org')) {
     e.respondWith(
       caches.open(RUNTIME_CACHE).then(async (cache) => {
         const cached = await cache.match(req);
@@ -92,13 +99,13 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 5. Fichiers statiques et librairies
+  // 3. Fichiers statiques et modules JS : Cache-First
   e.respondWith(
     caches.match(req).then(async (cached) => {
       if (cached) return cached;
       try {
         const res = await fetch(req);
-        if (res.ok && (url.origin === location.origin || url.hostname === 'unpkg.com' || url.hostname === 'cdn.jsdelivr.net' || url.hostname === 'cdnjs.cloudflare.com')) {
+        if (res.ok && (url.origin === location.origin || url.hostname.includes('unpkg.com'))) {
           const clone = res.clone();
           caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
         }
