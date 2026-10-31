@@ -61,8 +61,12 @@ class StorageManager {
       metaStore.put({
         key: 'official_sync',
         updated_at: metadata.updated_at || new Date().toISOString(),
+        official_date: metadata.official_date || '11 juillet 2025',
+        official_source: metadata.official_source || 'Ministère de l\'Intérieur / Sécurité Routière',
         total: radars.length,
-        version: metadata.version || '3.0.0'
+        chantier_count: metadata.chantier_count || 0,
+        stats: metadata.stats || {},
+        version: metadata.version || '3.1.0'
       });
 
       tx.oncomplete = () => resolve(true);

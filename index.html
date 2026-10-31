@@ -33,6 +33,12 @@
           <div class="gps-status-indicator" id="mapGpsDot"></div>
           <span class="gps-text" id="mapGpsText">Recherche GPS...</span>
         </div>
+        <div class="db-pill" id="btnTopDbInfo" role="button" tabindex="0" title="Base officielle Sécurité Routière (Cliquer pour les détails)">
+          <span class="db-pill-icon">📦</span>
+          <span class="db-pill-count" id="topbarRadarCount">...</span>
+          <span class="db-pill-dot">•</span>
+          <span class="db-pill-date" id="topbarRadarDate">MàJ...</span>
+        </div>
         <button class="hud-btn" id="btnOpenLufop" title="Importer base Lufop" aria-label="Importer base Lufop">📁</button>
         <button class="hud-btn" id="btnOpenSettings" title="Réglages" aria-label="Réglages">⚙️</button>
         <button class="hud-btn primary" id="btnSwitchToHud" title="Passer en Cockpit HUD" aria-label="Passer en Cockpit HUD">🚗</button>
@@ -180,14 +186,37 @@
         </div>
 
         <div>
-          <div class="settings-section-title">Base de données</div>
+          <div class="settings-section-title">Bases de données & Mises à jour</div>
           <div class="settings-card">
             <div class="settings-row">
               <div class="settings-label">
-                <span class="settings-label-title">Total radars actifs</span>
+                <span class="settings-label-title">Base officielle Sécurité Routière</span>
+                <span class="settings-label-desc" id="statOfficialDate">11 juillet 2025</span>
+              </div>
+              <span class="settings-badge-ok">Officiel gouv.fr</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Dernière synchronisation</span>
+                <span class="settings-label-desc" id="statSyncDate">Chargement...</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Radars autonomes & chantiers</span>
+                <span class="settings-label-desc" id="statChantierRadars">458 zones actives</span>
+              </div>
+              <span class="settings-badge-chantier">🚧 458</span>
+            </div>
+            <div class="settings-row">
+              <div class="settings-label">
+                <span class="settings-label-title">Total radars consolidés</span>
                 <span class="settings-label-desc" id="statTotalRadars">Chargement...</span>
               </div>
-              <button class="hud-btn" id="btnClearCache" title="Réinitialiser" style="font-size:14px; width:auto; padding:0 12px;">Vider cache</button>
+              <div style="display:flex; gap:8px;">
+                <button class="hud-btn" id="btnRefreshData" title="Actualiser la base" style="font-size:13px; width:auto; padding:0 12px; gap:4px;">🔄 Actualiser</button>
+                <button class="hud-btn" id="btnClearCache" title="Réinitialiser" style="font-size:13px; width:auto; padding:0 12px;">Vider cache</button>
+              </div>
             </div>
           </div>
         </div>

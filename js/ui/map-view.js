@@ -251,11 +251,17 @@ export class MapView {
 
         const m = L.marker([r.lat, r.lng], { icon: icon });
         m.bindPopup(`
-          <div style="font-family:sans-serif; min-width:180px;">
-            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">${r.icon || '📷'} ${r.type}</div>
-            ${r.vitesse ? `<div style="color:#d91c1c; font-weight:800; font-size:16px;">Limitation : ${r.vitesse} km/h</div>` : ''}
-            ${r.route ? `<div style="font-size:12px; color:#555;">Voie : ${r.route}</div>` : ''}
-            ${r.emplacement ? `<div style="font-size:12px; color:#555;">Commune : ${r.emplacement}</div>` : ''}
+          <div style="font-family:system-ui, -apple-system, sans-serif; min-width:200px; color:#1a1a1a;">
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+              <span>${r.icon || '📷'}</span>
+              <span>${r.type}</span>
+            </div>
+            ${r.vitesse ? `<div style="color:#d91c1c; font-weight:800; font-size:16px; margin-bottom:4px;">Limitation : ${r.vitesse} km/h</div>` : ''}
+            ${r.route ? `<div style="font-size:12px; color:#333; margin-bottom:2px;"><strong>Voie :</strong> ${r.route}</div>` : ''}
+            ${r.emplacement ? `<div style="font-size:12px; color:#555; margin-bottom:2px;">${r.emplacement}</div>` : ''}
+            ${r.longueur_troncon_km ? `<div style="font-size:12px; color:#d97706; font-weight:600; margin-bottom:2px;">🚧 Zone surveillée : ${r.longueur_troncon_km} km</div>` : ''}
+            ${r.direction ? `<div style="font-size:11px; color:#666;">Contrôle : ${r.direction}</div>` : ''}
+            ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
           </div>
         `);
 

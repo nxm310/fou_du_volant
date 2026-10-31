@@ -42,7 +42,14 @@ class StateStore {
       gpsActive: false,
       isMuted: false,
       radars: [],             // Tous les radars chargés
-      totalRadars: 0
+      totalRadars: 0,
+      metadata: {
+        updated_at: null,
+        official_date: '11 juillet 2025',
+        official_source: 'Ministère de l\'Intérieur / Sécurité Routière',
+        chantier_count: 0,
+        stats: {}
+      }
     };
   }
 
@@ -92,10 +99,14 @@ class StateStore {
     }
   }
 
-  setRadars(list) {
+  setRadars(list, metadata = null) {
     this.runtime.radars = list;
     this.runtime.totalRadars = list.length;
+    if (metadata && typeof metadata === 'object') {
+      this.runtime.metadata = Object.assign(this.runtime.metadata, metadata);
+    }
     this.emit('radarsLoaded', list);
+    this.emit('metadataUpdated', this.runtime.metadata);
   }
 
   updatePosition(posData) {

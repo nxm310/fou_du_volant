@@ -5,6 +5,7 @@
 
 import { state } from '../core/state.js';
 import { storage } from '../core/storage.js';
+import { radarService } from '../data/radar-service.js';
 import { parseLufopFile } from '../data/lufop-parser.js';
 import { spatialIndex } from '../geo/spatial-index.js';
 
@@ -41,6 +42,7 @@ export class ModalsController {
 
   initSettingsModal() {
     const btnOpen = document.getElementById('btnOpenSettings');
+    const btnTopDb = document.getElementById('btnTopDbInfo');
     const btnClose = document.getElementById('btnCloseSettings');
     if (btnOpen && this.settingsDialog) {
       btnOpen.addEventListener('click', () => {
@@ -48,9 +50,18 @@ export class ModalsController {
         this.settingsDialog.showModal();
       });
     }
+    if (btnTopDb && this.settingsDialog) {
+      btnTopDb.addEventListener('click', () => {
+        this.populateSettingsUI();
+        this.settingsDialog.showModal();
+      });
+    }
     if (btnClose && this.settingsDialog) {
       btnClose.addEventListener('click', () => this.settingsDialog.close());
     }
+
+    state.on('radarsLoaded', () => this.updateTopbarBadge());
+    state.on('metadataUpdated', () => this.updateTopbarBadge());
 
     // Réglages inputs
     const distInput = document.getElementById('cfgDistance');
@@ -60,6 +71,7 @@ export class ModalsController {
     const swVoice = document.getElementById('cfgVoice');
     const swOverspeed = document.getElementById('cfgOverspeed');
     const swAutoHud = document.getElementById('cfgAutoHud');
+    const btnRefreshData = document.getElementById('btnRefreshData');
     const btnClearCache = document.getElementById('btnClearCache');
 
     if (distInput) {
@@ -90,9 +102,27 @@ export class ModalsController {
       swAutoHud.addEventListener('change', (e) => state.updateSettings({ autoCarMode: e.target.checked }));
     }
 
+    if (btnRefreshData) {
+      btnRefreshData.addEventListener('click', async () => {
+        btnRefreshData.disabled = true;
+        btnRefreshData.textContent = '⏳ En cours...';
+        try {
+          const meta = await radarService.refresh();
+          this.populateSettingsUI();
+          this.updateTopbarBadge();
+          alert(`✅ Base de données actualisée avec succès !\n\n• ${state.runtime.totalRadars.toLocaleString('fr-FR')} radars actifs consolidés\n• Base officielle Sécurité Routière : ${meta.official_date || '11 juillet 2025'}\n• ${meta.chantier_count || 458} radars autonomes & chantiers`);
+        } catch (e) {
+          alert(`Erreur lors de l'actualisation : ${e.message}`);
+        } finally {
+          btnRefreshData.disabled = false;
+          btnRefreshData.textContent = '🔄 Actualiser';
+        }
+      });
+    }
+
     if (btnClearCache) {
       btnClearCache.addEventListener('click', async () => {
-        if (confirm("Réinitialiser le cache local et recharger les données ?")) {
+        if (confirm("Réinitialiser le cache local et recharger toutes les données officielles ?")) {
           await storage.clearAll();
           location.reload();
         }
@@ -100,8 +130,21 @@ export class ModalsController {
     }
   }
 
+  updateTopbarBadge() {
+    const countEl = document.getElementById('topbarRadarCount');
+    const dateEl = document.getElementById('topbarRadarDate');
+    const meta = state.runtime.metadata;
+    if (countEl && state.runtime.totalRadars) {
+      countEl.textContent = state.runtime.totalRadars.toLocaleString('fr-FR');
+    }
+    if (dateEl && meta && meta.official_date) {
+      dateEl.textContent = meta.official_date.replace('juillet', 'juil.').replace('septembre', 'sept.').replace('octobre', 'oct.');
+    }
+  }
+
   populateSettingsUI() {
     const s = state.settings;
+    const meta = state.runtime.metadata || {};
     const distInput = document.getElementById('cfgDistance');
     const distVal = document.getElementById('cfgDistanceVal');
     const selTile = document.getElementById('cfgTileLayer');
@@ -109,6 +152,10 @@ export class ModalsController {
     const swVoice = document.getElementById('cfgVoice');
     const swOverspeed = document.getElementById('cfgOverspeed');
     const swAutoHud = document.getElementById('cfgAutoHud');
+
+    const statOfficial = document.getElementById('statOfficialDate');
+    const statSync = document.getElementById('statSyncDate');
+    const statChantier = document.getElementById('statChantierRadars');
     const statTotal = document.getElementById('statTotalRadars');
 
     if (distInput) distInput.value = s.distance;
@@ -118,7 +165,23 @@ export class ModalsController {
     if (swVoice) swVoice.checked = s.voice;
     if (swOverspeed) swOverspeed.checked = s.overspeedAlert;
     if (swAutoHud) swAutoHud.checked = s.autoCarMode;
-    if (statTotal) statTotal.textContent = `${state.runtime.totalRadars} radars`;
+
+    if (statOfficial) statOfficial.textContent = `${meta.official_date || '11 juillet 2025'} (Sécurité Routière)`;
+    if (statSync) {
+      if (meta.updated_at) {
+        try {
+          const d = new Date(meta.updated_at);
+          statSync.textContent = d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+        } catch {
+          statSync.textContent = meta.updated_at;
+        }
+      } else {
+        statSync.textContent = 'Synchronisé';
+      }
+    }
+    const chantierCount = meta.chantier_count || (meta.stats && meta.stats['Radar autonome / chantier']) || 458;
+    if (statChantier) statChantier.textContent = `${chantierCount} zones actives intégrées`;
+    if (statTotal) statTotal.textContent = `${state.runtime.totalRadars.toLocaleString('fr-FR')} radars actifs consolidés`;
   }
 
   initReportModal() {

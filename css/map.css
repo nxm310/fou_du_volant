@@ -71,6 +71,57 @@
   text-overflow: ellipsis;
 }
 
+/* Badge indicateur base de données & dates */
+.db-pill {
+  background: var(--surface-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.db-pill:hover, .db-pill:focus-visible {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: var(--surface-card-hover);
+  transform: translateY(-1px);
+}
+
+.db-pill-icon {
+  font-size: 14px;
+}
+
+.db-pill-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.db-pill-dot {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.db-pill-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .db-pill-date {
+    display: none;
+  }
+}
+
 /* Barre de filtres horizontaux par badges */
 .filter-chips-container {
   display: flex;
