@@ -1,12 +1,11 @@
-// Service Worker - Fou du Volant PWA v3.0.0
-const VERSION = 'v3.0.0';
+// Service Worker - Fou du Volant PWA v3.1.0
+const VERSION = 'v3.1.0';
 const SHELL_CACHE = `fdv-shell-${VERSION}`;
 const RUNTIME_CACHE = `fdv-runtime-${VERSION}`;
 
 const SHELL_ASSETS = [
   './',
   './index.html',
-  './radars.json',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -81,7 +80,21 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 2. Tuiles de carte (Google Maps, Esri, OSM) : Cache avec fallback réseau
+  // 2. Fichier de données radars.json : NETWORK-FIRST systématique avec fallback cache
+  if (url.pathname.endsWith('radars.json')) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(SHELL_CACHE).then((cache) => cache.put(req, clone));
+        }
+        return res;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // 3. Tuiles de carte (Google Maps, Esri, OSM) : Cache avec fallback réseau
   if (
     url.hostname.includes('google.com') ||
     url.hostname.includes('arcgisonline.com') ||
@@ -104,20 +117,18 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 3. Fichiers statiques et modules JS : Cache-First
+  // 4. Fichiers statiques et modules JS : Stale-While-Revalidate pour mise à jour instantanée
   e.respondWith(
-    caches.match(req).then(async (cached) => {
-      if (cached) return cached;
-      try {
-        const res = await fetch(req);
+    caches.match(req).then((cached) => {
+      const fetchPromise = fetch(req).then((res) => {
         if (res.ok && (url.origin === location.origin || url.hostname.includes('unpkg.com'))) {
           const clone = res.clone();
           caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
         }
         return res;
-      } catch (err) {
-        return new Response('Ressource non disponible', { status: 404 });
-      }
+      }).catch(() => null);
+
+      return cached || fetchPromise || new Response('Ressource non disponible', { status: 404 });
     })
   );
 });

@@ -7,6 +7,7 @@ import { state } from '../core/state.js';
 let map = null;
 let currentTileLayer = null;
 let markerLayer = null;
+let corridorLayer = null;
 let userMarker = null;
 let isUserInteracting = false;
 let activeCategoryFilter = 'all';
@@ -82,6 +83,8 @@ export class MapView {
     // Chargement du fond de carte initial (Google Maps Trafic par défaut)
     this.setTileLayer(state.settings.mapTileLayer || 'google_traffic');
 
+    // Calques séparés pour les corridors (polylignes) et les marqueurs
+    corridorLayer = L.layerGroup().addTo(map);
     markerLayer = L.layerGroup().addTo(map);
 
     map.on('movestart', () => { isUserInteracting = true; });
@@ -130,7 +133,7 @@ export class MapView {
     if (btnTile) {
       btnTile.addEventListener('click', () => {
         const keys = Object.keys(TILE_PROVIDERS);
-        const current = state.settings.mapTileLayer || 'dark';
+        const current = state.settings.mapTileLayer || 'google_traffic';
         const nextIdx = (keys.indexOf(current) + 1) % keys.length;
         const nextKey = keys[nextIdx];
         this.setTileLayer(nextKey);
@@ -153,6 +156,16 @@ export class MapView {
         chips.forEach((c) => c.classList.remove('active'));
         chip.classList.add('active');
         activeCategoryFilter = chip.dataset.category || 'all';
+
+        if (activeCategoryFilter === 'chantier' && map) {
+          // Si on filtre par chantiers et qu'aucun n'est visible dans le zoom actuel, recadrer
+          const bounds = map.getBounds();
+          const visible = state.runtime.radars.filter(r => r.category === 'chantier' && bounds.contains([r.lat, r.lng]));
+          if (visible.length === 0 && map.getZoom() > 8) {
+            map.setView([46.603354, 1.888334], 6, { animate: true });
+          }
+        }
+
         this.renderVisibleMarkers();
       });
     });
@@ -214,6 +227,90 @@ export class MapView {
     }
   }
 
+  renderChantierMarker(r, drawCorridor = true) {
+    if (!markerLayer) return;
+
+    // Tracé de la zone de chantier / itinéraire sécurisé
+    if (drawCorridor && corridorLayer && r.geo_points && r.geo_points.length > 1) {
+      const poly = L.polyline(r.geo_points, {
+        color: '#f59e0b',
+        weight: 4,
+        opacity: 0.85,
+        dashArray: '6, 8',
+        lineCap: 'round'
+      });
+      poly.bindTooltip(`🚧 Zone ${r.route || ''} (${r.longueur_troncon_km ? r.longueur_troncon_km + ' km' : r.dep || ''})`, { sticky: true });
+      corridorLayer.addLayer(poly);
+    }
+
+    const iconHtml = `
+      <div class="radar-custom-marker chantier-marker" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); width:30px; height:30px; border-color:#ffffff; box-shadow:0 0 10px rgba(245, 158, 11, 0.65);">
+        <span style="font-size:16px;">🚧</span>
+      </div>
+    `;
+
+    const icon = L.divIcon({
+      className: 'custom-div-icon',
+      html: iconHtml,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
+    const m = L.marker([r.lat, r.lng], { icon: icon, zIndexOffset: 50 });
+    m.bindPopup(`
+      <div style="font-family:system-ui, -apple-system, sans-serif; min-width:220px; color:#1a1a1a;">
+        <div style="font-weight:800; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:6px; color:#b45309;">
+          <span>🚧</span>
+          <span>${r.type}</span>
+        </div>
+        ${r.route ? `<div style="font-size:12px; color:#111; margin-bottom:3px;"><strong>Voies surveillées :</strong> ${r.route}</div>` : ''}
+        ${r.emplacement ? `<div style="font-size:12px; color:#444; margin-bottom:3px;">${r.emplacement}</div>` : ''}
+        ${r.longueur_troncon_km ? `<div style="font-size:12px; color:#d97706; font-weight:700; margin-bottom:3px;">Longueur de zone : ${r.longueur_troncon_km} km</div>` : ''}
+        ${r.direction ? `<div style="font-size:11px; color:#666;">Sens : ${r.direction}</div>` : ''}
+        ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
+      </div>
+    `);
+
+    markerLayer.addLayer(m);
+  }
+
+  renderStandardMarker(r) {
+    if (!markerLayer) return;
+    const cat = r.category || 'fixe';
+    const color = CATEGORY_COLORS[cat] || '#3a86ff';
+
+    const iconHtml = `
+      <div class="radar-custom-marker" style="background:${color}; width:28px; height:28px;">
+        <span>${r.icon || '📷'}</span>
+        ${r.vitesse ? `<span class="radar-speed-tag">${r.vitesse}</span>` : ''}
+      </div>
+    `;
+
+    const icon = L.divIcon({
+      className: 'custom-div-icon',
+      html: iconHtml,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    const m = L.marker([r.lat, r.lng], { icon: icon });
+    m.bindPopup(`
+      <div style="font-family:system-ui, -apple-system, sans-serif; min-width:200px; color:#1a1a1a;">
+        <div style="font-weight:700; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+          <span>${r.icon || '📷'}</span>
+          <span>${r.type}</span>
+        </div>
+        ${r.vitesse ? `<div style="color:#d91c1c; font-weight:800; font-size:16px; margin-bottom:4px;">Limitation : ${r.vitesse} km/h</div>` : ''}
+        ${r.route ? `<div style="font-size:12px; color:#333; margin-bottom:2px;"><strong>Voie :</strong> ${r.route}</div>` : ''}
+        ${r.emplacement ? `<div style="font-size:12px; color:#555; margin-bottom:2px;">${r.emplacement}</div>` : ''}
+        ${r.direction ? `<div style="font-size:11px; color:#666;">Contrôle : ${r.direction}</div>` : ''}
+        ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
+      </div>
+    `);
+
+    markerLayer.addLayer(m);
+  }
+
   renderVisibleMarkers() {
     if (!map || !markerLayer || !state.runtime.radars.length) return;
 
@@ -221,53 +318,71 @@ export class MapView {
     const zoom = map.getZoom();
 
     markerLayer.clearLayers();
+    if (corridorLayer) {
+      corridorLayer.clearLayers();
+    }
 
-    // Au zoom faible, limiter l'affichage pour fluidité
-    const maxMarkers = zoom > 12 ? 300 : 80;
-    let count = 0;
+    // 1. Filtre spécifique "Chantiers" : afficher tous les chantiers dans la vue avec tracés
+    if (activeCategoryFilter === 'chantier') {
+      let chantierCount = 0;
+      for (const r of state.runtime.radars) {
+        if (r.category !== 'chantier') continue;
+        if (bounds.contains([r.lat, r.lng])) {
+          this.renderChantierMarker(r, true);
+          chantierCount++;
+          if (chantierCount >= 1000) break;
+        }
+      }
+      return;
+    }
+
+    // 2. Autre filtre spécifique (ex: tourelles, fixes, feux)
+    if (activeCategoryFilter !== 'all') {
+      let count = 0;
+      for (const r of state.runtime.radars) {
+        if (r.category !== activeCategoryFilter) continue;
+        if (bounds.contains([r.lat, r.lng])) {
+          this.renderStandardMarker(r);
+          count++;
+          if (count >= 500) break;
+        }
+      }
+      return;
+    }
+
+    // 3. Mode "Tous" : échantillonnage équitable entre toutes les catégories
+    // Garantit que les chantiers (🚧), tourelles, feux et discriminants ne sont jamais masqués par les fixes
+    const maxTotal = zoom > 12 ? 400 : 220;
+    const quotas = {
+      chantier: 70,
+      mobile: 30,
+      troncon: 30,
+      feu: 40,
+      tourelle: 40,
+      discriminant: 40,
+      passage: 20,
+      urbain: 15,
+      fixe: 80
+    };
+    const categoryCounts = {};
+    let totalRendered = 0;
 
     for (const r of state.runtime.radars) {
-      if (activeCategoryFilter !== 'all' && (r.category || 'fixe') !== activeCategoryFilter) {
-        continue;
-      }
+      const cat = r.category || 'fixe';
+      const quota = quotas[cat] || 30;
+      const currentCatCount = categoryCounts[cat] || 0;
+
+      if (currentCatCount >= quota) continue;
 
       if (bounds.contains([r.lat, r.lng])) {
-        const cat = r.category || 'fixe';
-        const color = CATEGORY_COLORS[cat] || '#3a86ff';
-
-        const iconHtml = `
-          <div class="radar-custom-marker" style="background:${color}; width:28px; height:28px;">
-            <span>${r.icon || '📷'}</span>
-            ${r.vitesse ? `<span class="radar-speed-tag">${r.vitesse}</span>` : ''}
-          </div>
-        `;
-
-        const icon = L.divIcon({
-          className: 'custom-div-icon',
-          html: iconHtml,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        });
-
-        const m = L.marker([r.lat, r.lng], { icon: icon });
-        m.bindPopup(`
-          <div style="font-family:system-ui, -apple-system, sans-serif; min-width:200px; color:#1a1a1a;">
-            <div style="font-weight:700; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
-              <span>${r.icon || '📷'}</span>
-              <span>${r.type}</span>
-            </div>
-            ${r.vitesse ? `<div style="color:#d91c1c; font-weight:800; font-size:16px; margin-bottom:4px;">Limitation : ${r.vitesse} km/h</div>` : ''}
-            ${r.route ? `<div style="font-size:12px; color:#333; margin-bottom:2px;"><strong>Voie :</strong> ${r.route}</div>` : ''}
-            ${r.emplacement ? `<div style="font-size:12px; color:#555; margin-bottom:2px;">${r.emplacement}</div>` : ''}
-            ${r.longueur_troncon_km ? `<div style="font-size:12px; color:#d97706; font-weight:600; margin-bottom:2px;">🚧 Zone surveillée : ${r.longueur_troncon_km} km</div>` : ''}
-            ${r.direction ? `<div style="font-size:11px; color:#666;">Contrôle : ${r.direction}</div>` : ''}
-            ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
-          </div>
-        `);
-
-        markerLayer.addLayer(m);
-        count++;
-        if (count >= maxMarkers) break;
+        if (cat === 'chantier') {
+          this.renderChantierMarker(r, zoom >= 9);
+        } else {
+          this.renderStandardMarker(r);
+        }
+        categoryCounts[cat] = currentCatCount + 1;
+        totalRendered++;
+        if (totalRendered >= maxTotal) break;
       }
     }
   }

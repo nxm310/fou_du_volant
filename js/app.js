@@ -41,7 +41,9 @@ class App {
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js').catch((err) => {
+        navigator.serviceWorker.register('./service-worker.js').then((reg) => {
+          reg.update();
+        }).catch((err) => {
           console.warn('Erreur Service Worker :', err);
         });
       });

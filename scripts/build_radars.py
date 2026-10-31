@@ -443,6 +443,21 @@ def build_radar_database():
             radars.append(item)
             stats[item["type"]] = stats.get(item["type"], 0) + 1
 
+    # Tri par priorité : chantiers, mobiles et zones critiques en tête de liste
+    priority = {
+        'chantier': 1,
+        'mobile': 2,
+        'troncon': 3,
+        'feu': 4,
+        'tourelle': 5,
+        'discriminant': 6,
+        'passage': 7,
+        'urbain': 8,
+        'leurre': 9,
+        'fixe': 10
+    }
+    radars.sort(key=lambda r: priority.get(r.get('category'), 99))
+
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     output_data = {
