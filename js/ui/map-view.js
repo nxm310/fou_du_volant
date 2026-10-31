@@ -12,12 +12,6 @@ let isUserInteracting = false;
 let activeCategoryFilter = 'all';
 
 export const TILE_PROVIDERS = {
-  dark: {
-    name: 'Sombre OLED Conduite',
-    icon: '🌙',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    options: { maxZoom: 19, subdomains: 'abcd' }
-  },
   google_traffic: {
     name: 'Google Maps Trafic Direct',
     icon: '🚦',
@@ -35,6 +29,12 @@ export const TILE_PROVIDERS = {
     icon: '🛣️',
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
     options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
+  },
+  dark_esri: {
+    name: 'Sombre Nuit Épuré (Esri Dark)',
+    icon: '🌙',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    options: { maxZoom: 16 }
   },
   osmfr: {
     name: 'OpenStreetMap France',
@@ -79,8 +79,8 @@ export class MapView {
       attributionControl: false
     }).setView([46.603354, 1.888334], 6);
 
-    // Chargement du fond de carte initial
-    this.setTileLayer(state.settings.mapTileLayer || 'dark');
+    // Chargement du fond de carte initial (Google Maps Trafic par défaut)
+    this.setTileLayer(state.settings.mapTileLayer || 'google_traffic');
 
     markerLayer = L.layerGroup().addTo(map);
 
@@ -92,7 +92,7 @@ export class MapView {
 
   setTileLayer(providerKey) {
     if (!map) return;
-    const provider = TILE_PROVIDERS[providerKey] || TILE_PROVIDERS.dark;
+    const provider = TILE_PROVIDERS[providerKey] || TILE_PROVIDERS.google_traffic;
 
     if (currentTileLayer) {
       map.removeLayer(currentTileLayer);

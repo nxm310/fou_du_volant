@@ -113,7 +113,7 @@ export class ModalsController {
 
     if (distInput) distInput.value = s.distance;
     if (distVal) distVal.textContent = `${s.distance} m`;
-    if (selTile) selTile.value = s.mapTileLayer || 'dark';
+    if (selTile) selTile.value = s.mapTileLayer || 'google_traffic';
     if (swSound) swSound.checked = s.sound;
     if (swVoice) swVoice.checked = s.voice;
     if (swOverspeed) swOverspeed.checked = s.overspeedAlert;

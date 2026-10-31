@@ -53,7 +53,7 @@
 
     <!-- Boutons flottants carte -->
     <aside class="map-fab-stack">
-      <button class="fab-btn" id="btnToggleTile" title="Changer de fond de carte (100% libre)" aria-label="Changer de fond de carte">🌙</button>
+      <button class="fab-btn" id="btnToggleTile" title="Changer de fond de carte (Google Maps, Satellite, Nuit)" aria-label="Changer de fond de carte">🚦</button>
       <button class="fab-btn" id="btnRecenter" title="Centrer sur ma position" aria-label="Centrer sur ma position">🎯</button>
     </aside>
 
@@ -141,10 +141,10 @@
                 <span class="settings-label-desc">Cartographie libre sans clé API</span>
               </div>
               <select id="cfgTileLayer" style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 8px; font-size:13px; color:var(--text);">
-                <option value="dark">🌙 Sombre OLED Conduite</option>
                 <option value="google_traffic">🚦 Google Maps Trafic en direct</option>
                 <option value="google_hybrid">🛰️ Google Maps Satellite HD</option>
                 <option value="google_roads">🛣️ Google Maps Routier</option>
+                <option value="dark_esri">🌙 Sombre Nuit Épuré (Esri Dark)</option>
                 <option value="osmfr">🇫🇷 OpenStreetMap France</option>
               </select>
             </div>

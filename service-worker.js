@@ -81,12 +81,12 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 2. Tuiles de carte CartoDB / OSM / Google Maps : Cache avec fallback réseau
+  // 2. Tuiles de carte (Google Maps, Esri, OSM) : Cache avec fallback réseau
   if (
-    url.hostname.includes('basemaps.cartocdn.com') ||
+    url.hostname.includes('google.com') ||
+    url.hostname.includes('arcgisonline.com') ||
     url.hostname.includes('tile.openstreetmap.org') ||
-    url.hostname.includes('tile.openstreetmap.fr') ||
-    url.hostname.includes('google.com')
+    url.hostname.includes('tile.openstreetmap.fr')
   ) {
     e.respondWith(
       caches.open(RUNTIME_CACHE).then(async (cache) => {

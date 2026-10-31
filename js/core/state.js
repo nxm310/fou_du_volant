@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
   overspeedAlert: true,    // Alerte visuelle et sonore de survitesse
   autoCarMode: true,       // Bascule automatique en HUD > 25 km/h
   toleranceSpeed: 3,       // Tolérance de survitesse en km/h (+3 km/h avant alerte)
-  mapTileLayer: 'dark',    // 'dark', 'osmfr', 'satellite', 'osm'
+  mapTileLayer: 'google_traffic', // 'google_traffic', 'google_hybrid', 'google_roads', 'dark_esri', 'osmfr'
   filterTypes: {
     fixe: true,
     tourelle: true,
