@@ -16,10 +16,10 @@
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" crossorigin="">
 
   <!-- Stylesheets modulaires -->
-  <link rel="stylesheet" href="./css/base.css?v=4.2.1">
-  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.1">
-  <link rel="stylesheet" href="./css/map.css?v=4.2.1">
-  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.1">
+  <link rel="stylesheet" href="./css/base.css?v=4.2.2">
+  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.2">
+  <link rel="stylesheet" href="./css/map.css?v=4.2.2">
+  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.2">
   <link rel="stylesheet" href="./css/iphone.css">
   <link rel="stylesheet" href="./css/driving.css">
 </head>
@@ -86,7 +86,7 @@
     <dialog id="sourcesDialog" aria-labelledby="sourcesTitle">
       <div class="modal-header"><h2 id="sourcesTitle">Sources & mises à jour</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div>
       <div class="modal-body">
-        <div class="source-version"><span id="sourceAppVersion">Version 4.2.1</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
+        <div class="source-version"><span id="sourceAppVersion">Version 4.2.2</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
         <button id="btnRefreshSources" class="start-drive">Réactualiser les sources ↻</button>
         <p id="sourcesRefreshStatus" role="status" aria-live="polite" class="muted">Recharge les dernières données publiées avec l’application. Les sites tiers ne sont pas reconsultés en direct.</p>
         <section class="source-dates"><h3>Base cartographique</h3><dl><dt>Date officielle déclarée</dt><dd id="sourceOfficialDate">Chargement…</dd><dt>Fichier préparé le</dt><dd id="sourcePreparedDate">Chargement…</dd><dt>Dernier téléchargement sur cet appareil</dt><dd id="sourceRadarDownloaded">Pas encore effectué</dd></dl></section>
@@ -114,7 +114,7 @@
       </header>
       <p class="drive-status" id="hudTripStatus" role="status">En attente de votre position GPS</p>
       <div class="cockpit-center drive-stage">
-        <img class="drive-landscape" src="./assets/drive-road.svg" alt="" aria-hidden="true">
+        <svg class="drive-lanes" viewBox="0 0 390 260" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="laneFade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="260"><stop stop-color="#78929b" stop-opacity="0"/><stop offset=".45" stop-color="#78929b" stop-opacity=".4"/><stop offset="1" stop-color="#78929b" stop-opacity=".15"/></linearGradient></defs><path d="M176 0 90 260M214 0l86 260" stroke="url(#laneFade)" stroke-width="1.5"/><path d="M195 20v16m0 28v22m0 34v30m0 44v42" stroke="url(#laneFade)" stroke-width="2" stroke-linecap="round"/></svg>
         <div class="speedometer-block">
           <svg class="speed-dial" viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="108" pathLength="100" class="speed-dial-track"/><circle id="hudSpeedArc" cx="120" cy="120" r="108" pathLength="100" stroke-dasharray="0 100" class="speed-dial-value"/></svg>
           <span class="drive-speed-label">VOTRE VITESSE</span>
@@ -122,16 +122,16 @@
           <div class="speed-unit">km/h</div>
           <div class="gps-badge"><div class="gps-dot" id="hudGpsDot"></div><span id="hudGpsAccuracy">GPS en attente</span></div>
         </div>
-        <div class="drive-road-sign"><div class="drive-route-tag" id="hudRoadRef">VOTRE VOIE</div><div class="road-pill"><span class="road-text" id="hudRoadText">Voie non identifiée</span><span class="drive-sign-arrow" aria-hidden="true">↑</span></div><span class="drive-sign-post" aria-hidden="true"></span></div>
-        <div class="drive-limit"><div class="speed-limit-sign hidden" id="hudSpeedLimitSign" aria-label="Limite inconnue"><span class="speed-limit-number" id="hudSpeedLimitNum">—</span></div><span id="hudLimitLabel">Limite inconnue</span><i aria-hidden="true"></i></div>
-        <span class="drive-scene-note">Vue illustrée · sans guidage</span>
+        <div class="drive-road-label"><span class="drive-route-tag" id="hudRoadRef" hidden></span><span class="road-text" id="hudRoadText">Voie non identifiée</span></div>
+        <div class="drive-limit" id="hudLimitContainer" hidden><div class="speed-limit-sign hidden" id="hudSpeedLimitSign" aria-label="Limite inconnue"><span class="speed-limit-number" id="hudSpeedLimitNum">—</span></div><span id="hudLimitLabel">Au radar</span></div>
+
       </div>
       <div class="drive-bottom-panel">
         <section class="cockpit-alert-card idle" id="hudAlertCard" aria-live="polite">
           <div class="alert-card-top"><span class="alert-icon-badge" id="hudAlertIcon" aria-hidden="true">◇</span><div class="drive-alert-copy"><span class="drive-eyebrow">À PROXIMITÉ</span><span id="hudAlertTitle">Position GPS nécessaire</span></div><div class="alert-distance-counter" id="hudAlertDist">—</div></div>
           <div class="alert-progress-track"><div class="alert-progress-bar" id="hudAlertBar"></div></div>
         </section>
-        <footer class="cockpit-bottom"><button class="btn-report-xxl" id="btnHudReport"><span class="drive-report-icon" aria-hidden="true">＋</span> Signaler un événement <span class="drive-report-arrow" aria-hidden="true">↗</span></button><p class="drive-footer-note">Gardez les yeux sur la route.</p></footer>
+        <footer class="cockpit-bottom"><button class="btn-report-xxl" id="btnHudReport"><span class="drive-report-icon" aria-hidden="true">＋</span> Signaler un événement <span class="drive-report-arrow" aria-hidden="true">↗</span></button></footer>
       </div>
     </main>
 
@@ -285,6 +285,6 @@
   <!-- Leaflet JS -->
   <script src="./vendor/leaflet/leaflet.js" crossorigin=""></script>
   <!-- Application ES Module -->
-  <script type="module" src="./js/app.js?v=4.2.1"></script>
+  <script type="module" src="./js/app.js?v=4.2.2"></script>
 </body>
 </html>

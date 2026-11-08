@@ -24,6 +24,14 @@ function getAudioContext() {
   return audioCtx;
 }
 
+export function formatApproachAnnouncement(radar, distance) {
+  const label = radar.category === 'chantier' ? 'Travaux' : ['mobile', 'fixe', 'tourelle', 'discriminant', 'troncon', 'feu', 'urbain', 'passage'].includes(radar.category) ? 'Radar' : 'Attention';
+  const distanceText = Number.isFinite(distance) && distance > 100 ? ` à ${Math.round(distance / 50) * 50} mètres` : ' à proximité';
+  const limit = Number(radar.vitesse);
+  const speedText = Number.isFinite(limit) && limit > 0 ? `, limite ${limit}` : '';
+  return `${label}${distanceText}${speedText}.`;
+}
+
 export class SoundEngine {
   constructor() {
     this.frenchVoice = null;
@@ -125,7 +133,7 @@ export class SoundEngine {
 
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'fr-FR';
-    utter.rate = 1.05;
+    utter.rate = 1.0;
     utter.pitch = 1.0;
     if (this.frenchVoice) utter.voice = this.frenchVoice;
 
@@ -149,13 +157,7 @@ export class SoundEngine {
 
       this.playApproachChime();
 
-      let text = `Attention, ${radar.type || 'radar'}`;
-      if (dist > 100) {
-        text += ` dans ${Math.round(dist / 50) * 50} mètres`;
-      }
-      if (radar.vitesse) {
-        text += `, limité à ${radar.vitesse}`;
-      }
+      const text = formatApproachAnnouncement(radar, dist);
 
       this.speak(text);
     }
@@ -169,7 +171,7 @@ export class SoundEngine {
     if (now - lastOverspeedAnnounceTime > 7000) {
       lastOverspeedAnnounceTime = now;
       this.playOverspeedChime();
-      this.speak("Ralentissez !", true);
+      this.speak("Ralentissez.", true);
     }
   }
 }

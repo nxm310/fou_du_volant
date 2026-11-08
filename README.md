@@ -72,3 +72,7 @@ Pour chaque livraison suivante : `node scripts/release.mjs "Description de la co
 Le cockpit affiche une route vectorielle en perspective, une voiture et un cadran relié à la vitesse GPS. Le dessin est décoratif : il ne représente pas la géométrie de la route actuelle et ne fournit aucune instruction de navigation. Le panneau de voie reprend uniquement la voie estimée par OSRM ; le panneau de vitesse indique la limite du point de contrôle détecté, pas celle de toute la route. En absence de données, vitesse, voie et limite restent explicitement inconnues.
 
 **Réglages → Découvrir l’écran de conduite · sans GPS** permet de prévisualiser l’interface sans demander de localisation. Le décor est statique et n’ajoute aucune requête réseau ; il est inclus dans le cache hors ligne. Le portrait et le paysage sont pris en charge.
+
+## Mode conduite simplifié · version 4.2.2
+
+Le décor en perspective est remplacé par quelques traits statiques de chaussée. Le cadran de vitesse reste au centre, la voie est une simple ligne et le panneau à droite n’apparaît que pour un point détecté dont la limite est connue. Aucun panneau vide n’est affiché. Les traits de route restent décoratifs. Les annonces sont courtes, par exemple « Radar à 500 mètres, limite 80. », avec un débit standard. La voix disponible dépend toujours de l’iPhone.

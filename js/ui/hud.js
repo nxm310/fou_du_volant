@@ -16,6 +16,7 @@ export class CockpitHUD {
     this.speedArc = document.getElementById('hudSpeedArc');
     this.tripStatus = document.getElementById('hudTripStatus');
     this.roadRef = document.getElementById('hudRoadRef');
+    this.limitContainer = document.getElementById('hudLimitContainer');
     this.limitLabel = document.getElementById('hudLimitLabel');
     this.gpsAccEl = document.getElementById('hudGpsAccuracy');
 
@@ -71,12 +72,13 @@ export class CockpitHUD {
 
   updateGpsStatus(status) {
     this.view.dataset.gps = status.active ? 'active' : status.error ? 'error' : 'pending';
-    this.tripStatus.textContent = status.active ? 'Votre trajet, en un coup d’œil.' : status.message || 'En attente de votre position GPS';
+    this.tripStatus.textContent = status.active ? '' : status.message || 'En attente de votre position GPS';
     if (!status.active) {
       this.speedEl.textContent = '—';
       this.speedArc.setAttribute('stroke-dasharray', '0 100');
       this.roadTextEl.textContent = 'Voie non identifiée';
-      this.roadRef.textContent = 'VOTRE VOIE';
+      this.roadRef.textContent = '';
+      this.roadRef.hidden = true;
       this.updateAlert(null);
     }
     this.gpsAccEl.textContent = status.active ? `Précision ±${state.runtime.gpsAccuracy || 0} m` : status.error === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
@@ -116,7 +118,8 @@ export class CockpitHUD {
   updateRoad(road) {
     if (this.roadTextEl) {
       this.roadTextEl.textContent = road.name || road.ref || 'Voie non identifiée';
-      this.roadRef.textContent = road.ref || 'VOTRE VOIE';
+      this.roadRef.textContent = road.ref || '';
+      this.roadRef.hidden = !road.ref;
     }
   }
 
@@ -124,9 +127,10 @@ export class CockpitHUD {
     if (!nearest) {
       this.alertCard.className = 'cockpit-alert-card idle';
       this.alertIcon.textContent = '◇';
-      this.alertTitle.textContent = state.runtime.gpsStatus.active ? 'Aucun point signalé à proximité' : 'Position GPS nécessaire';
+      this.alertTitle.textContent = state.runtime.gpsStatus.active ? 'Aucune alerte à proximité' : 'Position GPS nécessaire';
       this.alertDist.textContent = '—';
       this.alertBar.style.width = '0%';
+      this.limitContainer.hidden = true;
       this.signEl.classList.add('hidden');
       this.signNumEl.textContent = '—';
       this.signEl.setAttribute('aria-label', 'Limite inconnue');
@@ -150,10 +154,12 @@ export class CockpitHUD {
     // Panneau de limitation de vitesse
     if (r.vitesse) {
       this.signNumEl.textContent = r.vitesse;
+      this.limitContainer.hidden = false;
       this.signEl.classList.remove('hidden');
       this.signEl.setAttribute('aria-label', `Limite au radar : ${r.vitesse} km/h`);
-      this.limitLabel.textContent = 'Limite au radar';
+      this.limitLabel.textContent = 'Au radar';
     } else {
+      this.limitContainer.hidden = true;
       this.signEl.classList.add('hidden');
       this.signNumEl.textContent = '—';
       this.signEl.setAttribute('aria-label', 'Limite inconnue');

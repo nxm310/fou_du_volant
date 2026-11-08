@@ -1,6 +1,15 @@
 {
-  "current": "4.2.1",
+  "current": "4.2.2",
   "history": [
+    {
+      "version": "4.2.2",
+      "date": "2026-11-08",
+      "changes": [
+        "Écran de conduite épuré : compteur central, simples traits de route et voie affichée sur une ligne.",
+        "Panneau de limitation à droite uniquement lorsqu’un point détecté fournit une vitesse.",
+        "Annonces vocales raccourcies et débit plus posé."
+      ]
+    },
     {
       "version": "4.2.1",
       "date": "2026-11-08",
