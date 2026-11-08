@@ -2,6 +2,8 @@
  * Fou du Volant - Application Boot & Orchestrator
  */
 
+import { SourcesView } from './ui/sources.js';
+import { ReleaseNotes } from './ui/releases.js';
 import { ChantiersView } from './ui/chantiers.js';
 import { MobileExperience } from './ui/mobile.js';
 import { radarService } from './data/radar-service.js';
@@ -11,7 +13,7 @@ import { ModalsController } from './ui/modals.js';
 
 class App {
   async init() {
-    console.log('🚀 Initialisation de Fou du Volant v4.0...');
+    console.log('Initialisation de Fou du Volant');
 
     // 1. Initialiser les contrôleurs d'interface
     this.mapView = new MapView();
@@ -20,6 +22,8 @@ class App {
 
     this.mobile = new MobileExperience();
     this.chantiers = new ChantiersView();
+    this.sources = new SourcesView();
+    this.releases = new ReleaseNotes();
     this.registerServiceWorker();
 
     // 2. Charger les données et l'index spatial

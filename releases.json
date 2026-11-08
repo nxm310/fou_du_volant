@@ -1,0 +1,24 @@
+{
+  "current": "4.2.0",
+  "history": [
+    {
+      "version": "4.2.0",
+      "date": "2026-11-08",
+      "changes": [
+        "Actualisation des données publiées depuis la rubrique Sources, avec résultat détaillé par base.",
+        "Affichage des dates des données et du dernier téléchargement sur cet appareil.",
+        "Présentation des nouveautés au premier lancement de chaque version et historique accessible depuis Sources."
+      ]
+    },
+    {
+      "version": "4.1.2",
+      "date": "2026-11-08",
+      "changes": [
+        "Nouvelle interface adaptée à l’iPhone et installation sur l’écran d’accueil.",
+        "Ajout de trois fiches de radars de chantier sourcées et datées.",
+        "Reclassement des 458 itinéraires de contrôle et correction des alertes GPS.",
+        "Corrections du cache hors ligne et de la pause du GPS."
+      ]
+    }
+  ]
+}

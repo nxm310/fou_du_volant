@@ -44,9 +44,9 @@ export class RadarService {
     }
   }
 
-  async fetchPayload() {
+  async fetchPayload({ fresh = false } = {}) {
     try {
-      const res = await fetch(`./radars.json?v=4.1.0&t=${Date.now()}`, { cache: 'no-cache' });
+      const res = await fetch(`./radars.json?v=4.1.0${fresh ? '&fdv_refresh=1' : ''}&t=${Date.now()}`, { cache: fresh ? 'no-store' : 'no-cache', signal: AbortSignal.timeout(15000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (e) {
@@ -55,14 +55,15 @@ export class RadarService {
     }
   }
 
-  async refresh() {
+  async refresh({ fresh = false } = {}) {
     console.log('Actualisation forcée de la base de radars...');
-    const payload = await this.fetchPayload();
+    const payload = await this.fetchPayload({ fresh });
     const rawRecords = payload.radars;
     const radars = Array.isArray(rawRecords) ? normalizeRadarRecords(rawRecords) : rawRecords;
     if (!Array.isArray(radars) || !radars.length || radars.some(r => !Number.isFinite(r.lat) || !Number.isFinite(r.lng))) throw new Error('Base vide ou invalide ; données locales conservées.');
     const meta = {
       updated_at: payload.updated_at,
+      downloaded_at: fresh ? new Date().toISOString() : (await storage.getSyncMetadata())?.downloaded_at || null,
       official_date: payload.official_date || '11 juillet 2025',
       official_source: payload.official_source || 'Ministère de l\'Intérieur / Sécurité Routière',
       total: payload.total || radars.length,

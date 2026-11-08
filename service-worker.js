@@ -1,6 +1,7 @@
 // Versioned shell: install atomically, never delete another app's caches.
-const CACHE = 'fdv-shell-v4.1.2';
+const CACHE = 'fdv-shell-v4.2.0';
 const ASSETS = [
+ './releases.json', './js/ui/releases.js', './js/ui/sources.js', './js/data/chantier-service.js',
  './data/sourced_chantiers.json', './js/data/data-quality.js', './js/ui/chantiers.js',
  './', './index.html', './manifest.json', './radars.json',
  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png',
@@ -24,7 +25,7 @@ self.addEventListener('fetch', event => {
  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
  if (!url.href.startsWith(self.registration.scope)) return;
  const canonical = new URL(url); canonical.search = '';
- if (url.pathname.endsWith('/radars.json')) {
+ if (url.pathname.endsWith('/radars.json') || url.pathname.endsWith('/data/sourced_chantiers.json')) {
    event.respondWith((async () => {
      const cache = await caches.open(CACHE);
      try {
@@ -32,10 +33,14 @@ self.addEventListener('fetch', event => {
        if (!response.ok) throw new Error('Data unavailable');
        // Validate before replacing the offline snapshot.
        const data = await response.clone().json();
-       if (!Array.isArray(data.radars) || !data.radars.length) throw new Error('Invalid data');
+       if (url.pathname.endsWith('/radars.json')) {
+         if (!Array.isArray(data.radars) || !data.radars.length || data.radars.some(r => !Number.isFinite(r.lat) || !Number.isFinite(r.lng))) throw new Error('Invalid data');
+       } else if (!Array.isArray(data.records) || data.records.some(r => !r.id || !r.installation_date || !r.source_consulted_on || !r.source_url?.startsWith('https://'))) throw new Error('Invalid fiches');
        await cache.put(canonical.href, response.clone());
        return response;
      } catch {
+       // An explicit refresh must never masquerade as a successful network download.
+       if (url.searchParams.get('fdv_refresh') === '1') return new Response('Actualisation impossible ; données précédentes conservées', { status: 503 });
        return await cache.match(canonical.href) || new Response('Données indisponibles', { status: 503 });
      }
    })());

@@ -60,7 +60,8 @@ class StorageManager {
       const metaStore = tx.objectStore(STORE_META);
       metaStore.put({
         key: 'official_sync',
-        updated_at: metadata.updated_at || new Date().toISOString(),
+        updated_at: metadata.updated_at || null,
+        downloaded_at: metadata.downloaded_at || null,
         official_date: metadata.official_date || '11 juillet 2025',
         official_source: metadata.official_source || 'Ministère de l\'Intérieur / Sécurité Routière',
         total: radars.length,

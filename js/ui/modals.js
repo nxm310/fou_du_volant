@@ -107,7 +107,7 @@ export class ModalsController {
         btnRefreshData.disabled = true;
         btnRefreshData.textContent = '⏳ En cours...';
         try {
-          const meta = await radarService.refresh();
+          const meta = await radarService.refresh({ fresh: true });
           this.populateSettingsUI();
           this.updateTopbarBadge();
           alert(`✅ Base de données actualisée avec succès !\n\n• ${state.runtime.totalRadars.toLocaleString('fr-FR')} points dans la base\n• Base officielle Sécurité Routière : ${meta.official_date || '11 juillet 2025'}\n• ${meta.chantier_count ?? 0} points de chantier localisés`);

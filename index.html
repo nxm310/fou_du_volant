@@ -16,10 +16,10 @@
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" crossorigin="">
 
   <!-- Stylesheets modulaires -->
-  <link rel="stylesheet" href="./css/base.css?v=4.0.0">
-  <link rel="stylesheet" href="./css/cockpit.css?v=4.0.0">
-  <link rel="stylesheet" href="./css/map.css?v=4.0.0">
-  <link rel="stylesheet" href="./css/dialogs.css?v=4.0.0">
+  <link rel="stylesheet" href="./css/base.css?v=4.2.0">
+  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.0">
+  <link rel="stylesheet" href="./css/map.css?v=4.2.0">
+  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.0">
   <link rel="stylesheet" href="./css/iphone.css">
 </head>
 <body>
@@ -82,7 +82,25 @@
     </section>
     <nav class="bottom-nav" aria-label="Navigation principale"><button class="selected" id="navMap" aria-current="page"><span aria-hidden="true">◈</span>Explorer</button><button id="navDrive"><span aria-hidden="true">↗</span>Conduire</button><button id="navSources"><span aria-hidden="true">▤</span>Sources</button><button id="navSettings"><span aria-hidden="true">☷</span>Réglages</button></nav>
     <dialog id="installDialog" aria-labelledby="installTitle"><div class="modal-header"><h2 id="installTitle">À portée de pouce.</h2><button class="btn-close-modal" data-close="installDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>Retrouvez Fou du Volant directement sur votre écran d’accueil.</p><ol class="install-steps"><li>Ouvrez cette page dans <strong>Safari</strong>.</li><li>Touchez <strong>Partager</strong>, puis <strong>Sur l’écran d’accueil</strong>.</li><li>Activez <strong>Ouvrir comme app web</strong> et touchez Ajouter.</li></ol><p class="muted">Le suivi fonctionne tant que l’application reste visible. Le fond de carte nécessite Internet.</p><a href="https://support.apple.com/fr-fr/guide/iphone/iphea86e5236/ios" target="_blank" rel="noopener">Le guide Apple ↗</a></div></dialog>
-    <dialog id="sourcesDialog" aria-labelledby="sourcesTitle"><div class="modal-header"><h2 id="sourcesTitle">Des sources, pas des promesses.</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>La base embarquée est une photographie de données. Elle ne prouve ni la présence actuelle d’un dispositif, ni la limitation applicable à toute une route.</p><a class="source-link" href="https://www.data.gouv.fr/datasets/radars-automatiques" target="_blank" rel="noopener">data.gouv.fr <small>Données publiques · vérifier la date de la ressource ↗</small></a><a class="source-link" href="https://www.securite-routiere.gouv.fr/radars/carte-des-radars" target="_blank" rel="noopener">Sécurité routière <small>Carte et informations officielles ↗</small></a><a class="source-link" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19460" target="_blank" rel="noopener">Règles de circulation <small>Vitesse et équipements d’alerte ↗</small></a><p class="muted">Les signalements sont enregistrés uniquement sur cet appareil et expirent après 3 heures. Le nom de voie est estimé par le service public OSRM, auquel votre position est transmise pendant le trajet.</p></div></dialog>
+    <dialog id="sourcesDialog" aria-labelledby="sourcesTitle">
+      <div class="modal-header"><h2 id="sourcesTitle">Sources & mises à jour</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div>
+      <div class="modal-body">
+        <div class="source-version"><span id="sourceAppVersion">Version 4.2.0</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
+        <button id="btnRefreshSources" class="start-drive">Réactualiser les sources ↻</button>
+        <p id="sourcesRefreshStatus" role="status" aria-live="polite" class="muted">Recharge les dernières données publiées avec l’application. Les sites tiers ne sont pas reconsultés en direct.</p>
+        <section class="source-dates"><h3>Base cartographique</h3><dl><dt>Date officielle déclarée</dt><dd id="sourceOfficialDate">Chargement…</dd><dt>Fichier préparé le</dt><dd id="sourcePreparedDate">Chargement…</dd><dt>Dernier téléchargement sur cet appareil</dt><dd id="sourceRadarDownloaded">Pas encore effectué</dd></dl></section>
+        <section class="source-dates"><h3>Fiches de chantier · Radars-Auto</h3><dl><dt>Sources consultées le</dt><dd id="sourceChantierDate">Chargement…</dd><dt>Dernier téléchargement sur cet appareil</dt><dd id="sourceChantierDownloaded">Pas encore effectué</dd></dl><p class="muted">La date d’installation annoncée figure sur chaque fiche. La présence actuelle reste non confirmée.</p></section>
+        <a class="source-link" href="https://www.data.gouv.fr/datasets/radars-automatiques" target="_blank" rel="noopener">data.gouv.fr <small>Données publiques de référence ↗</small></a>
+        <a class="source-link" href="https://www.securite-routiere.gouv.fr/radars/carte-des-radars" target="_blank" rel="noopener">Sécurité routière <small>Carte et informations officielles ↗</small></a>
+        <a class="source-link" href="https://www.radars-auto.com/info-radars/radars-autonomes/" target="_blank" rel="noopener">Radars-Auto <small>Source des fiches documentaires de chantier ↗</small></a>
+        <a class="source-link" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19460" target="_blank" rel="noopener">Règles de circulation <small>Vitesse et équipements d’alerte ↗</small></a>
+        <p class="muted">Les données sont indicatives. Les signalements restent sur cet appareil et expirent après 3 heures. Pendant le trajet, OSRM reçoit votre position pour estimer la voie.</p>
+      </div>
+    </dialog>
+    <dialog id="releaseDialog" aria-labelledby="releaseTitle">
+      <div class="modal-header"><h2 id="releaseTitle">Quoi de neuf ?</h2><button class="btn-close-modal" data-close="releaseDialog" aria-label="Fermer">×</button></div>
+      <div class="modal-body"><p class="muted">Les dernières améliorations de votre compagnon de route.</p><div id="releaseHistory"></div><button id="btnReleaseDone" class="start-drive">C’est parti</button></div>
+    </dialog>
     <dialog id="chantiersDialog" aria-labelledby="chantiersTitle"><div class="modal-header"><h2 id="chantiersTitle">Radars de chantier</h2><button class="btn-close-modal" data-close="chantiersDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>Fiches d’emplacements publiés. Ces appareils peuvent être déplacés : leur présence actuelle n’est pas confirmée.</p><p class="muted">Les 458 itinéraires de contrôle de la base sont consultables avec le filtre « Itinéraires ». Ce ne sont pas 458 radars de chantier.</p><div id="chantiersList" role="status">Chargement des fiches…</div><button id="btnRetryChantiers" class="start-drive" hidden>Réessayer</button><button id="btnShowMappedChantiers" class="secondary-action">Voir les points de chantier localisés</button><p class="muted" id="chantiersMapCount"></p></div></dialog>
     <!-- MODE COCKPIT OLED (HUD EN CONDUITE) -->
     <main class="cockpit-view" id="cockpitView" aria-label="Cockpit HUD">
@@ -285,6 +303,6 @@
   <!-- Leaflet JS -->
   <script src="./vendor/leaflet/leaflet.js" crossorigin=""></script>
   <!-- Application ES Module -->
-  <script type="module" src="./js/app.js?v=4.0.0"></script>
+  <script type="module" src="./js/app.js?v=4.2.0"></script>
 </body>
 </html>

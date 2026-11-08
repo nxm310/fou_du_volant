@@ -1,3 +1,4 @@
+import { chantierService } from '../data/chantier-service.js';
 import { state } from '../core/state.js';
 export class ChantiersView {
   constructor() {
@@ -9,6 +10,7 @@ export class ChantiersView {
       if (!this.loaded) this.load();
     });
     this.retry.onclick = () => this.load();
+    window.addEventListener('chantierSourcesUpdated', () => { if (this.loaded) { this.loaded = false; this.load(); } });
     state.on('radarsLoaded', () => this.updateCount());
     this.updateCount();
   }
@@ -23,9 +25,7 @@ export class ChantiersView {
     this.retry.hidden = true;
     this.list.textContent = 'Chargement des fiches…';
     try {
-      const response = await fetch('./data/sourced_chantiers.json');
-      if (!response.ok) throw new Error('unavailable');
-      const payload = await response.json();
+      const payload = await chantierService.load();
       if (!Array.isArray(payload.records)) throw new Error('invalid');
       this.list.replaceChildren();
       for (const record of payload.records) {

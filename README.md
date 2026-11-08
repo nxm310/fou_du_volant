@@ -56,3 +56,13 @@ Sources des fiches :
 - https://www.radars-auto.com/emplacements/morbihan/radars-autonomes/
 
 Vérifications supplémentaires : `node --test tests/data-quality.test.cjs`.
+
+## Sources et nouveautés · version 4.2.0
+
+Dans **Sources**, le bouton **Réactualiser les sources** télécharge à nouveau `radars.json` et les fiches documentaires publiées avec l’application. Il affiche le résultat de chaque téléchargement, y compris si un seul réussit. En cas d’échec, les données précédentes et leur date de téléchargement sont conservées. Ce bouton ne consulte pas directement les sites tiers et ne déclenche pas le script de collecte Python.
+
+La date officielle de la base, la préparation du fichier, les dates de consultation des fiches et le dernier téléchargement sur l’appareil sont présentés séparément. Un nouveau téléchargement ne change jamais la date de consultation de la source. Les horaires utilisent le fuseau du téléphone.
+
+Les nouveautés s’ouvrent au premier lancement de chaque version. Après fermeture, elles restent accessibles depuis **Sources → Voir les nouveautés**. Si le stockage du navigateur est désactivé, la fenêtre peut réapparaître. L’historique est enregistré dans `releases.json`.
+
+Pour chaque livraison suivante : `node scripts/release.mjs "Description de la correction"`. Le script incrémente le numéro, le cache et les liens de ressources, puis conserve une entrée datée dans l’historique. Une ancienne instance doit être fermée puis rouverte pour activer une version en attente, afin de conserver un ensemble cohérent de fichiers.

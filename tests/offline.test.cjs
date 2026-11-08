@@ -18,3 +18,12 @@ test('version query resolves to offline shell',async()=>{const h=harness();h.ent
 test('missing resource returns a Response, never null',async()=>{assert.equal((await harness().fetch('missing.js')).status,503);});
 test('failed/invalid data refresh preserves offline snapshot',async()=>{for(const offline of [true,false]){const h=harness(offline);h.entries.set('https://example.test/fou_du_volant/radars.json',new Response('saved-data'));assert.equal(await(await h.fetch('radars.json?t=123')).text(),'saved-data');}});
 test('activation leaves other apps caches intact',async()=>{const h=harness();let done;h.listeners.activate({waitUntil:p=>done=p});await done;assert.deepEqual(h.deleted,['fdv-shell-old']);});
+test('an explicit refresh fails visibly offline instead of returning a cached success',async()=>{
+ const h=harness();
+ for(const path of ['radars.json','data/sourced_chantiers.json']){
+  h.entries.set(`https://example.test/fou_du_volant/${path}`,new Response('previous-snapshot'));
+  const response=await h.fetch(`${path}?fdv_refresh=1`);
+  assert.equal(response.status,503);
+  assert.equal(await h.entries.get(`https://example.test/fou_du_volant/${path}`).text(),'previous-snapshot');
+ }
+});
