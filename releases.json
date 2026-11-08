@@ -1,6 +1,14 @@
 {
-  "current": "4.2.0",
+  "current": "4.2.1",
   "history": [
+    {
+      "version": "4.2.1",
+      "date": "2026-11-08",
+      "changes": [
+        "Nouvel écran de conduite : route illustrée en perspective, compteur à cadran et panneaux intégrés.",
+        "Affichage explicite des limites et du GPS inconnus, avec aperçu du cockpit depuis les réglages."
+      ]
+    },
     {
       "version": "4.2.0",
       "date": "2026-11-08",

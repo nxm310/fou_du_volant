@@ -16,11 +16,12 @@
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" crossorigin="">
 
   <!-- Stylesheets modulaires -->
-  <link rel="stylesheet" href="./css/base.css?v=4.2.0">
-  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.0">
-  <link rel="stylesheet" href="./css/map.css?v=4.2.0">
-  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.0">
+  <link rel="stylesheet" href="./css/base.css?v=4.2.1">
+  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.1">
+  <link rel="stylesheet" href="./css/map.css?v=4.2.1">
+  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.1">
   <link rel="stylesheet" href="./css/iphone.css">
+  <link rel="stylesheet" href="./css/driving.css">
 </head>
 <body>
   <div id="appRoot">
@@ -85,7 +86,7 @@
     <dialog id="sourcesDialog" aria-labelledby="sourcesTitle">
       <div class="modal-header"><h2 id="sourcesTitle">Sources & mises à jour</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div>
       <div class="modal-body">
-        <div class="source-version"><span id="sourceAppVersion">Version 4.2.0</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
+        <div class="source-version"><span id="sourceAppVersion">Version 4.2.1</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
         <button id="btnRefreshSources" class="start-drive">Réactualiser les sources ↻</button>
         <p id="sourcesRefreshStatus" role="status" aria-live="polite" class="muted">Recharge les dernières données publiées avec l’application. Les sites tiers ne sont pas reconsultés en direct.</p>
         <section class="source-dates"><h3>Base cartographique</h3><dl><dt>Date officielle déclarée</dt><dd id="sourceOfficialDate">Chargement…</dd><dt>Fichier préparé le</dt><dd id="sourcePreparedDate">Chargement…</dd><dt>Dernier téléchargement sur cet appareil</dt><dd id="sourceRadarDownloaded">Pas encore effectué</dd></dl></section>
@@ -102,56 +103,36 @@
       <div class="modal-body"><p class="muted">Les dernières améliorations de votre compagnon de route.</p><div id="releaseHistory"></div><button id="btnReleaseDone" class="start-drive">C’est parti</button></div>
     </dialog>
     <dialog id="chantiersDialog" aria-labelledby="chantiersTitle"><div class="modal-header"><h2 id="chantiersTitle">Radars de chantier</h2><button class="btn-close-modal" data-close="chantiersDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>Fiches d’emplacements publiés. Ces appareils peuvent être déplacés : leur présence actuelle n’est pas confirmée.</p><p class="muted">Les 458 itinéraires de contrôle de la base sont consultables avec le filtre « Itinéraires ». Ce ne sont pas 458 radars de chantier.</p><div id="chantiersList" role="status">Chargement des fiches…</div><button id="btnRetryChantiers" class="start-drive" hidden>Réessayer</button><button id="btnShowMappedChantiers" class="secondary-action">Voir les points de chantier localisés</button><p class="muted" id="chantiersMapCount"></p></div></dialog>
-    <!-- MODE COCKPIT OLED (HUD EN CONDUITE) -->
-    <main class="cockpit-view" id="cockpitView" aria-label="Cockpit HUD">
-      <!-- En-tête HUD -->
+    <!-- MODE CONDUITE -->
+    <main class="cockpit-view" id="cockpitView" aria-label="Mode conduite">
       <header class="cockpit-header">
-        <div class="road-pill">
-          <span class="road-icon" aria-hidden="true">🛣️</span>
-          <span class="road-text" id="hudRoadText">Localisation de la voie...</span>
-        </div>
+        <div class="drive-brand"><span class="drive-brand-mark" aria-hidden="true">↗</span><div><span class="drive-eyebrow">FOU DU VOLANT</span><h2>En route<span>.</span></h2></div></div>
         <div class="cockpit-actions">
-          <button class="hud-btn" id="btnHudMute" title="Couper/Activer le son" aria-label="Couper ou activer le son">🔊</button>
-          <button class="hud-btn" id="btnExitHud" title="Afficher la carte" aria-label="Afficher la carte">🗺️</button>
+          <button class="hud-btn drive-mute" id="btnHudMute" title="Couper ou activer le son" aria-label="Couper le son" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 3c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/></svg></button>
+          <button class="hud-btn drive-exit" id="btnExitHud" aria-label="Afficher la carte"><span aria-hidden="true">◈</span> Carte</button>
         </div>
       </header>
-
-      <!-- Centre : Compteur & Limitation -->
-      <div class="cockpit-center">
-        <div class="speed-limit-sign hidden" id="hudSpeedLimitSign" aria-label="Limitation de vitesse">
-          <span class="speed-limit-number" id="hudSpeedLimitNum">--</span>
-        </div>
-
+      <p class="drive-status" id="hudTripStatus" role="status">En attente de votre position GPS</p>
+      <div class="cockpit-center drive-stage">
+        <img class="drive-landscape" src="./assets/drive-road.svg" alt="" aria-hidden="true">
         <div class="speedometer-block">
+          <svg class="speed-dial" viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="108" pathLength="100" class="speed-dial-track"/><circle id="hudSpeedArc" cx="120" cy="120" r="108" pathLength="100" stroke-dasharray="0 100" class="speed-dial-value"/></svg>
+          <span class="drive-speed-label">VOTRE VITESSE</span>
           <div class="speed-value" id="hudSpeed">—</div>
-          <div class="speed-unit">KM/H</div>
-          <div class="gps-badge">
-            <div class="gps-dot" id="hudGpsDot"></div>
-            <span id="hudGpsAccuracy">GPS</span>
-          </div>
+          <div class="speed-unit">km/h</div>
+          <div class="gps-badge"><div class="gps-dot" id="hudGpsDot"></div><span id="hudGpsAccuracy">GPS en attente</span></div>
         </div>
+        <div class="drive-road-sign"><div class="drive-route-tag" id="hudRoadRef">VOTRE VOIE</div><div class="road-pill"><span class="road-text" id="hudRoadText">Voie non identifiée</span><span class="drive-sign-arrow" aria-hidden="true">↑</span></div><span class="drive-sign-post" aria-hidden="true"></span></div>
+        <div class="drive-limit"><div class="speed-limit-sign hidden" id="hudSpeedLimitSign" aria-label="Limite inconnue"><span class="speed-limit-number" id="hudSpeedLimitNum">—</span></div><span id="hudLimitLabel">Limite inconnue</span><i aria-hidden="true"></i></div>
+        <span class="drive-scene-note">Vue illustrée · sans guidage</span>
       </div>
-
-      <!-- Alerte radar dynamique -->
-      <section class="cockpit-alert-card idle" id="hudAlertCard" aria-live="assertive">
-        <div class="alert-card-top">
-          <div class="alert-info-title">
-            <span class="alert-icon-badge" id="hudAlertIcon">🛡️</span>
-            <span id="hudAlertTitle">Aucun radar détecté</span>
-          </div>
-          <div class="alert-distance-counter" id="hudAlertDist">--</div>
-        </div>
-        <div class="alert-progress-track">
-          <div class="alert-progress-bar" id="hudAlertBar"></div>
-        </div>
-      </section>
-
-      <!-- Bouton Signalement 1-Tap au pouce -->
-      <footer class="cockpit-bottom">
-        <button class="btn-report-xxl" id="btnHudReport">
-          <span aria-hidden="true">🚨</span> SIGNALER UN ÉVÉNEMENT
-        </button>
-      </footer>
+      <div class="drive-bottom-panel">
+        <section class="cockpit-alert-card idle" id="hudAlertCard" aria-live="polite">
+          <div class="alert-card-top"><span class="alert-icon-badge" id="hudAlertIcon" aria-hidden="true">◇</span><div class="drive-alert-copy"><span class="drive-eyebrow">À PROXIMITÉ</span><span id="hudAlertTitle">Position GPS nécessaire</span></div><div class="alert-distance-counter" id="hudAlertDist">—</div></div>
+          <div class="alert-progress-track"><div class="alert-progress-bar" id="hudAlertBar"></div></div>
+        </section>
+        <footer class="cockpit-bottom"><button class="btn-report-xxl" id="btnHudReport"><span class="drive-report-icon" aria-hidden="true">＋</span> Signaler un événement <span class="drive-report-arrow" aria-hidden="true">↗</span></button><p class="drive-footer-note">Gardez les yeux sur la route.</p></footer>
+      </div>
     </main>
 
     <!-- MODAL DE RÉGLAGES -->
@@ -161,6 +142,7 @@
         <button class="btn-close-modal" id="btnCloseSettings" aria-label="Fermer">✕</button>
       </div>
       <div class="modal-body">
+        <button id="btnPreviewDrive" class="secondary-action">Découvrir l’écran de conduite · sans GPS</button>
         <div>
           <div class="settings-section-title">Alertes & Conduite</div>
           <div class="settings-card">
@@ -303,6 +285,6 @@
   <!-- Leaflet JS -->
   <script src="./vendor/leaflet/leaflet.js" crossorigin=""></script>
   <!-- Application ES Module -->
-  <script type="module" src="./js/app.js?v=4.2.0"></script>
+  <script type="module" src="./js/app.js?v=4.2.1"></script>
 </body>
 </html>

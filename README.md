@@ -66,3 +66,9 @@ La date officielle de la base, la préparation du fichier, les dates de consulta
 Les nouveautés s’ouvrent au premier lancement de chaque version. Après fermeture, elles restent accessibles depuis **Sources → Voir les nouveautés**. Si le stockage du navigateur est désactivé, la fenêtre peut réapparaître. L’historique est enregistré dans `releases.json`.
 
 Pour chaque livraison suivante : `node scripts/release.mjs "Description de la correction"`. Le script incrémente le numéro, le cache et les liens de ressources, puis conserve une entrée datée dans l’historique. Une ancienne instance doit être fermée puis rouverte pour activer une version en attente, afin de conserver un ensemble cohérent de fichiers.
+
+## Mode conduite illustré · version 4.2.1
+
+Le cockpit affiche une route vectorielle en perspective, une voiture et un cadran relié à la vitesse GPS. Le dessin est décoratif : il ne représente pas la géométrie de la route actuelle et ne fournit aucune instruction de navigation. Le panneau de voie reprend uniquement la voie estimée par OSRM ; le panneau de vitesse indique la limite du point de contrôle détecté, pas celle de toute la route. En absence de données, vitesse, voie et limite restent explicitement inconnues.
+
+**Réglages → Découvrir l’écran de conduite · sans GPS** permet de prévisualiser l’interface sans demander de localisation. Le décor est statique et n’ajoute aucune requête réseau ; il est inclus dans le cache hors ligne. Le portrait et le paysage sont pris en charge.

@@ -13,6 +13,10 @@ export class CockpitHUD {
     this.signEl = document.getElementById('hudSpeedLimitSign');
     this.signNumEl = document.getElementById('hudSpeedLimitNum');
     this.gpsDotEl = document.getElementById('hudGpsDot');
+    this.speedArc = document.getElementById('hudSpeedArc');
+    this.tripStatus = document.getElementById('hudTripStatus');
+    this.roadRef = document.getElementById('hudRoadRef');
+    this.limitLabel = document.getElementById('hudLimitLabel');
     this.gpsAccEl = document.getElementById('hudGpsAccuracy');
 
     this.alertCard = document.getElementById('hudAlertCard');
@@ -37,6 +41,11 @@ export class CockpitHUD {
     state.on('overspeedChanged', (isOver) => this.updateOverspeed(isOver));
     state.on('carModeChanged', (isActive) => this.handleModeChange(isActive));
 
+    document.getElementById('btnPreviewDrive').addEventListener('click', () => {
+      document.getElementById('settingsDialog').close();
+      state.toggleCarMode(true);
+    });
+
     // Boutons du HUD
     if (this.btnExit) {
       this.btnExit.addEventListener('click', () => state.toggleCarMode(false));
@@ -45,7 +54,8 @@ export class CockpitHUD {
     if (this.btnMute) {
       this.btnMute.addEventListener('click', () => {
         state.runtime.isMuted = !state.runtime.isMuted;
-        this.btnMute.textContent = state.runtime.isMuted ? '🔇' : '🔊';
+        this.btnMute.setAttribute('aria-pressed', String(state.runtime.isMuted));
+        this.btnMute.setAttribute('aria-label', state.runtime.isMuted ? 'Activer le son' : 'Couper le son');
       });
     }
 
@@ -60,17 +70,27 @@ export class CockpitHUD {
   }
 
   updateGpsStatus(status) {
-    if (!status.active) this.speedEl.textContent = "—";
-    if (this.gpsAccEl) {
-      this.gpsAccEl.textContent = status.active ? `GPS ±${state.runtime.gpsAccuracy || 0}m` : (status.error ? 'ERR' : 'GPS');
+    this.view.dataset.gps = status.active ? 'active' : status.error ? 'error' : 'pending';
+    this.tripStatus.textContent = status.active ? 'Votre trajet, en un coup d’œil.' : status.message || 'En attente de votre position GPS';
+    if (!status.active) {
+      this.speedEl.textContent = '—';
+      this.speedArc.setAttribute('stroke-dasharray', '0 100');
+      this.roadTextEl.textContent = 'Voie non identifiée';
+      this.roadRef.textContent = 'VOTRE VOIE';
+      this.updateAlert(null);
     }
-    if (this.gpsDotEl) {
-      this.gpsDotEl.className = 'gps-dot' + (status.active ? ' active' : status.error ? ' error' : '');
-    }
+    this.gpsAccEl.textContent = status.active ? `Précision ±${state.runtime.gpsAccuracy || 0} m` : status.error === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
+    this.gpsDotEl.className = 'gps-dot' + (status.active ? ' active' : status.error ? ' error' : '');
   }
 
   handleModeChange(isActive) {
     if (isActive) {
+      this.updateGpsStatus(state.runtime.gpsStatus);
+      if (state.runtime.gpsStatus.active && state.runtime.userPos) {
+        this.updatePosition(state.runtime.userPos);
+        this.updateRoad(state.runtime.currentRoad);
+        this.updateAlert(state.runtime.nearestRadar);
+      }
       this.view.classList.add('active');
       requestWakeLock();
     } else {
@@ -81,30 +101,37 @@ export class CockpitHUD {
 
   updatePosition(pos) {
     if (this.speedEl) {
-      this.speedEl.textContent = pos.speed;
+      const speed = Number.isFinite(pos.speed) ? Math.max(0, pos.speed) : null;
+      this.speedEl.textContent = speed === null ? '—' : Math.round(speed);
+      this.speedArc.setAttribute('stroke-dasharray', `${speed === null ? 0 : Math.min(speed / 130, 1) * 75} 100`);
     }
     if (this.gpsDotEl) {
       this.gpsDotEl.classList.toggle('active', pos.accuracy <= 25);
     }
     if (this.gpsAccEl) {
-      this.gpsAccEl.textContent = `GPS ±${pos.accuracy}m`;
+      this.gpsAccEl.textContent = `Précision ±${pos.accuracy} m`;
     }
   }
 
   updateRoad(road) {
     if (this.roadTextEl) {
-      this.roadTextEl.textContent = road.name || road.ref || 'En route';
+      this.roadTextEl.textContent = road.name || road.ref || 'Voie non identifiée';
+      this.roadRef.textContent = road.ref || 'VOTRE VOIE';
     }
   }
 
   updateAlert(nearest) {
     if (!nearest) {
       this.alertCard.className = 'cockpit-alert-card idle';
-      this.alertIcon.textContent = '🛡️';
-      this.alertTitle.textContent = 'Aucun radar détecté';
-      this.alertDist.textContent = '--';
+      this.alertIcon.textContent = '◇';
+      this.alertTitle.textContent = state.runtime.gpsStatus.active ? 'Aucun point signalé à proximité' : 'Position GPS nécessaire';
+      this.alertDist.textContent = '—';
       this.alertBar.style.width = '0%';
       this.signEl.classList.add('hidden');
+      this.signNumEl.textContent = '—';
+      this.signEl.setAttribute('aria-label', 'Limite inconnue');
+      this.limitLabel.textContent = 'Limite inconnue';
+      this.view.dataset.overspeed = 'false';
       return;
     }
 
@@ -114,7 +141,7 @@ export class CockpitHUD {
 
     this.alertIcon.textContent = r.icon || '📷';
     this.alertTitle.textContent = r.type || 'Radar';
-    this.alertDist.textContent = `${dist} m`;
+    this.alertDist.textContent = dist >= 1000 ? `${(dist / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(dist)} m`;
 
     // Calcul du pourcentage de progression (100% à distance max -> 0% à 0m)
     const pct = Math.max(0, Math.min(100, Math.round((dist / threshold) * 100)));
@@ -124,10 +151,16 @@ export class CockpitHUD {
     if (r.vitesse) {
       this.signNumEl.textContent = r.vitesse;
       this.signEl.classList.remove('hidden');
+      this.signEl.setAttribute('aria-label', `Limite au radar : ${r.vitesse} km/h`);
+      this.limitLabel.textContent = 'Limite au radar';
     } else {
       this.signEl.classList.add('hidden');
+      this.signNumEl.textContent = '—';
+      this.signEl.setAttribute('aria-label', 'Limite inconnue');
+      this.limitLabel.textContent = 'Limite inconnue';
     }
 
+    this.view.dataset.overspeed = String(state.runtime.isOverspeed);
     if (state.runtime.isOverspeed) {
       this.alertCard.className = 'cockpit-alert-card overspeed';
     } else {
@@ -136,6 +169,7 @@ export class CockpitHUD {
   }
 
   updateOverspeed(isOver) {
+    this.view.dataset.overspeed = String(isOver);
     if (state.runtime.nearestRadar) {
       if (isOver) {
         this.alertCard.className = 'cockpit-alert-card overspeed';
