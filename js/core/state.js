@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS = {
   overspeedAlert: true,    // Alerte visuelle et sonore de survitesse
   autoCarMode: true,       // Bascule automatique en HUD > 25 km/h
   toleranceSpeed: 3,       // Tolérance de survitesse en km/h (+3 km/h avant alerte)
-  mapTileLayer: 'google_traffic', // 'google_traffic', 'google_hybrid', 'google_roads', 'dark_esri', 'osmfr'
+  mapTileLayer: 'dark_esri', // 'google_traffic', 'google_hybrid', 'google_roads', 'dark_esri', 'osmfr'
   filterTypes: {
     fixe: true,
     tourelle: true,
@@ -40,7 +40,7 @@ class StateStore {
       isOverspeed: false,
       gpsAccuracy: null,
       gpsActive: false,
-      gpsStatus: { active: false, error: null, message: 'Recherche GPS...' },
+      gpsStatus: { active: false, error: null, message: 'Localisation inactive' },
       isMuted: false,
       radars: [],             // Tous les radars chargés
       totalRadars: 0,
@@ -58,12 +58,15 @@ class StateStore {
     try {
       const saved = localStorage.getItem('fdv_settings_v3');
       if (saved) {
-        return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(saved));
+        const settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        settings.filterTypes = { ...DEFAULT_SETTINGS.filterTypes, ...settings.filterTypes };
+        if (!['dark_esri', 'osm'].includes(settings.mapTileLayer)) settings.mapTileLayer = 'dark_esri';
+        return settings;
       }
     } catch (e) {
       console.warn('Impossible de charger les réglages :', e);
     }
-    return Object.assign({}, DEFAULT_SETTINGS);
+    return { ...DEFAULT_SETTINGS, filterTypes: { ...DEFAULT_SETTINGS.filterTypes } };
   }
 
   saveSettings() {

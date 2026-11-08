@@ -3,7 +3,7 @@
 Fou du Volant - Script de consolidation et synchronisation des radars français.
 Sources :
 1. Ministère de l'Intérieur / Sécurité Routière (radars.securite-routiere.gouv.fr/radars/all)
-   - 458 Radars autonomes & de chantiers (Itinéraires sécurisés avec polylignes GPS)
+   - Itinéraires de contrôle avec polylignes GPS (pas des appareils localisés)
    - Tous les radars en service avec détails officiels (vitesse, voies, départements)
    - Date officielle de mise à jour extraite en temps réel
 2. data.gouv.fr (Radars automatiques du Ministère de l'Intérieur)
@@ -302,7 +302,7 @@ def build_radar_database():
         if coord_key not in seen_coords:
             missing_sr.append(item)
 
-    print(f"   ✓ {len(itins)} Radars autonomes & de chantiers (itinéraires sécurisés) détectés.")
+    print(f"   ✓ {len(itins)} itinéraires de contrôle détectés.")
     print(f"   ✓ {len(missing_sr)} équipements récents non répertoriés dans l'ancienne base data.gouv.")
 
     # 3. Charger le cache et récupérer les détails manquants en parallèle
@@ -327,8 +327,8 @@ def build_radar_database():
     else:
         print("\n⏳ 3/4 Fiches détaillées déjà disponibles en cache local.")
 
-    # Intégrer tous les 458 Radars autonomes & Chantiers
-    chantier_count = 0
+    # Intégrer les itinéraires sans inventer d’appareil ni de sens de contrôle
+    itinerary_count = 0
     for it in itins:
         iid = it["id"]
         det = details_cache.get(iid, {})
@@ -343,7 +343,7 @@ def build_radar_database():
         dep = det.get("dep", "")
         road = det.get("road", "")
         troncon = det.get("troncon_km")
-        emplacement = f"Zone chantier / itinéraire sécurisé ({dep})" if dep else "Zone de chantier / itinéraire sécurisé"
+        emplacement = f"Itinéraire de contrôle ({dep})" if dep else "Itinéraire de contrôle"
 
         geo_points = []
         raw_geojson = it.get("geoJson", [])
@@ -357,16 +357,19 @@ def build_radar_database():
             "id": f"sr_{iid}",
             "lat": round(lat, 5),
             "lng": round(lng, 5),
-            "type": "Radar autonome / chantier",
-            "category": "chantier",
-            "icon": "🚧",
+            "type": "Itinéraire de contrôle",
+            "category": "leurre",
+            "icon": "🎭",
+            "entity_kind": "itinerary",
+            "presence_status": "unconfirmed",
+            "source_url": SR_HOME_URL,
             "route": road,
             "emplacement": emplacement,
-            "direction": "Double sens (radar autonome mobile)",
+            "direction": "",
             "dep": dep,
             "vitesse": None,
             "vitesse_pl": None,
-            "equipement": "Radar Autonome (LIDAR Poliscan déplaçable)",
+            "equipement": "Type d’appareil non déterminé",
             "geo_points": geo_points
         }
         if troncon:
@@ -376,8 +379,8 @@ def build_radar_database():
                 pass
 
         radars.append(chantier_item)
-        stats["Radar autonome / chantier"] = stats.get("Radar autonome / chantier", 0) + 1
-        chantier_count += 1
+        stats["Itinéraire de contrôle"] = stats.get("Itinéraire de contrôle", 0) + 1
+        itinerary_count += 1
 
     # Intégrer les autres radars manquants (nouveaux fixes, urbains, tourelles, discriminants)
     new_radars_count = 0
@@ -461,12 +464,13 @@ def build_radar_database():
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     output_data = {
-        "version": "3.1.0",
+        "version": "4.1.0",
         "updated_at": now_iso,
         "official_date": official_date,
         "official_source": "Ministère de l'Intérieur / Sécurité Routière (radars.securite-routiere.gouv.fr & data.gouv.fr)",
         "total": len(radars),
-        "chantier_count": chantier_count,
+        "chantier_count": sum(r.get("category") == "chantier" for r in radars),
+        "itinerary_count": itinerary_count,
         "new_deployments_count": new_radars_count,
         "stats": stats,
         "radars": radars
@@ -483,7 +487,7 @@ def build_radar_database():
     print(f"📦 Total radars consolidés : {len(radars)}")
     print(f"📅 Date officielle Sécurité Routière : {official_date}")
     print(f"🔄 Date de génération : {now_iso}")
-    print(f"🚧 Radars chantiers & autonomes intégrés : {chantier_count}")
+    print(f"🚧 Points de chantier localisés : {sum(r.get('category') == 'chantier' for r in radars)}")
     print(f"🆕 Nouveaux radars récents intégrés : {new_radars_count}")
     print("\n📊 Répartition détaillée par catégorie :")
     for t, count in sorted(stats.items(), key=lambda x: x[1], reverse=True):

@@ -110,7 +110,7 @@ export class ModalsController {
           const meta = await radarService.refresh();
           this.populateSettingsUI();
           this.updateTopbarBadge();
-          alert(`✅ Base de données actualisée avec succès !\n\n• ${state.runtime.totalRadars.toLocaleString('fr-FR')} radars actifs consolidés\n• Base officielle Sécurité Routière : ${meta.official_date || '11 juillet 2025'}\n• ${meta.chantier_count || 458} radars autonomes & chantiers`);
+          alert(`✅ Base de données actualisée avec succès !\n\n• ${state.runtime.totalRadars.toLocaleString('fr-FR')} points dans la base\n• Base officielle Sécurité Routière : ${meta.official_date || '11 juillet 2025'}\n• ${meta.chantier_count ?? 0} points de chantier localisés`);
         } catch (e) {
           alert(`Erreur lors de l'actualisation : ${e.message}`);
         } finally {
@@ -160,7 +160,7 @@ export class ModalsController {
 
     if (distInput) distInput.value = s.distance;
     if (distVal) distVal.textContent = `${s.distance} m`;
-    if (selTile) selTile.value = s.mapTileLayer || 'google_traffic';
+    if (selTile) selTile.value = s.mapTileLayer || 'dark_esri';
     if (swSound) swSound.checked = s.sound;
     if (swVoice) swVoice.checked = s.voice;
     if (swOverspeed) swOverspeed.checked = s.overspeedAlert;
@@ -179,9 +179,9 @@ export class ModalsController {
         statSync.textContent = 'Synchronisé';
       }
     }
-    const chantierCount = meta.chantier_count || (meta.stats && meta.stats['Radar autonome / chantier']) || 458;
-    if (statChantier) statChantier.textContent = `${chantierCount} zones actives intégrées`;
-    if (statTotal) statTotal.textContent = `${state.runtime.totalRadars.toLocaleString('fr-FR')} radars actifs consolidés`;
+    const chantierCount = meta.chantier_count ?? (meta.stats && meta.stats['Radar autonome / chantier']) ?? 0;
+    if (statChantier) statChantier.textContent = `${chantierCount} points localisés · présence non confirmée`;
+    if (statTotal) statTotal.textContent = `${state.runtime.totalRadars.toLocaleString('fr-FR')} points dans la base`;
   }
 
   initReportModal() {
@@ -217,11 +217,12 @@ export class ModalsController {
         // Sauvegarde locale
         await storage.addCommunityRadar(report);
         state.runtime.radars.push(report);
+        state.runtime.totalRadars = state.runtime.radars.length;
         spatialIndex.build(state.runtime.radars);
         state.emit('radarsLoaded', state.runtime.radars);
 
         this.reportDialog.close();
-        alert(`Merci ! Signalement "${report.type}" enregistré.`);
+        alert(`Enregistré sur cet appareil uniquement. Signalement "${report.type}" enregistré.`);
       });
     });
   }
@@ -300,6 +301,7 @@ export class ModalsController {
     }
 
     if (totalImported > 0) {
+      state.runtime.totalRadars = state.runtime.radars.length;
       spatialIndex.build(state.runtime.radars);
       state.emit('radarsLoaded', state.runtime.radars);
       alert(`Import réussi : ${totalImported} radars ajoutés à votre carte !`);

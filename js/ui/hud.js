@@ -60,6 +60,7 @@ export class CockpitHUD {
   }
 
   updateGpsStatus(status) {
+    if (!status.active) this.speedEl.textContent = "—";
     if (this.gpsAccEl) {
       this.gpsAccEl.textContent = status.active ? `GPS ±${state.runtime.gpsAccuracy || 0}m` : (status.error ? 'ERR' : 'GPS');
     }

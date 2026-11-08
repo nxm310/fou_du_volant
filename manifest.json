@@ -1,15 +1,19 @@
 {
-  "name": "Fou du Volant — Radars France",
+  "name": "Fou du Volant",
   "short_name": "Fou du Volant",
-  "description": "Assistant d'aide à la conduite, alertes radars France et cockpit HUD OLED",
+  "description": "Votre compagnon de route : carte, conduite et données locales.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#101b24",
+  "theme_color": "#101b24",
   "lang": "fr",
-  "categories": ["navigation", "utilities", "travel"],
+  "categories": [
+    "navigation",
+    "utilities",
+    "travel"
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",
@@ -29,5 +33,6 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "./"
 }

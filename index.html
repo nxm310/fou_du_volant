@@ -2,65 +2,68 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#101b24">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Fou du Volant">
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <title>Fou du Volant — Assistant Radars France & Cockpit HUD</title>
+  <title>Fou du Volant — Votre compagnon de route</title>
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" crossorigin="">
 
   <!-- Stylesheets modulaires -->
-  <link rel="stylesheet" href="./css/base.css?v=3.1.0">
-  <link rel="stylesheet" href="./css/cockpit.css?v=3.1.0">
-  <link rel="stylesheet" href="./css/map.css?v=3.1.0">
-  <link rel="stylesheet" href="./css/dialogs.css?v=3.1.0">
+  <link rel="stylesheet" href="./css/base.css?v=4.0.0">
+  <link rel="stylesheet" href="./css/cockpit.css?v=4.0.0">
+  <link rel="stylesheet" href="./css/map.css?v=4.0.0">
+  <link rel="stylesheet" href="./css/dialogs.css?v=4.0.0">
+  <link rel="stylesheet" href="./css/iphone.css">
 </head>
 <body>
   <div id="appRoot">
     <!-- MODE CARTE / EXPLORATEUR -->
     <div id="mapContainer"></div>
 
+    <div class="brand-bar"><div class="brand-mark" aria-hidden="true">↗</div><div><strong>Fou du Volant<span>.</span></strong><small>UN PEU PLUS SEREIN, EN CHEMIN.</small></div><button id="btnInstall" class="install-button">Installer</button></div>
     <!-- Barre supérieure de navigation (Mode Carte) -->
     <header class="map-topbar">
       <div class="topbar-row">
-        <div class="gps-pill" id="mapGpsPill">
+        <button class="gps-pill" id="mapGpsPill" aria-label="Activer la localisation">
           <div class="gps-status-indicator" id="mapGpsDot"></div>
-          <span class="gps-text" id="mapGpsText">Recherche GPS...</span>
-        </div>
-        <div class="db-pill" id="btnTopDbInfo" role="button" tabindex="0" title="Base officielle Sécurité Routière (Cliquer pour les détails)">
+          <span class="gps-text" id="mapGpsText">Localisation inactive</span>
+        </button>
+        <button class="db-pill" id="btnTopDbInfo" title="Base officielle Sécurité Routière (Cliquer pour les détails)">
           <span class="db-pill-icon">📦</span>
           <span class="db-pill-count" id="topbarRadarCount">...</span>
           <span class="db-pill-dot">•</span>
-          <span class="db-pill-date" id="topbarRadarDate">MàJ...</span>
-        </div>
-        <button class="hud-btn" id="btnOpenLufop" title="Importer base Lufop" aria-label="Importer base Lufop">📁</button>
-        <button class="hud-btn" id="btnOpenSettings" title="Réglages" aria-label="Réglages">⚙️</button>
-        <button class="hud-btn primary" id="btnSwitchToHud" title="Passer en Cockpit HUD" aria-label="Passer en Cockpit HUD">🚗</button>
+          <span class="db-pill-date" id="topbarRadarDate">Chargement</span>
+        </button>
+        <button class="hud-btn" id="btnOpenLufop" title="Importer base Lufop" aria-label="Importer base Lufop">＋</button>
+        <button class="hud-btn" id="btnOpenSettings" title="Réglages" aria-label="Réglages">☷</button>
+        <button class="hud-btn primary" id="btnSwitchToHud" title="Passer en Cockpit HUD" aria-label="Passer en Cockpit HUD">↗</button>
       </div>
 
       <!-- Filtres rapides par badges -->
       <nav class="filter-chips-container" aria-label="Filtres de radars">
-        <button class="filter-chip active" data-category="all">⚡ Tous</button>
-        <button class="filter-chip" data-category="tourelle">🗼 Tourelles</button>
-        <button class="filter-chip" data-category="fixe">📷 Fixes</button>
-        <button class="filter-chip" data-category="feu">🚦 Feux rouges</button>
-        <button class="filter-chip" data-category="discriminant">🚛 Discriminants</button>
-        <button class="filter-chip" data-category="troncon">⏱️ Tronçons</button>
-        <button class="filter-chip" data-category="chantier">🚧 Chantiers</button>
-        <button class="filter-chip" data-category="mobile">🚓 Mobiles</button>
+        <button class="filter-chip active" data-category="all">Tous les radars</button>
+        <button class="filter-chip" data-category="tourelle">Tourelles</button>
+        <button class="filter-chip" data-category="fixe">Fixes</button>
+        <button class="filter-chip" data-category="feu">Feux rouges</button>
+        <button class="filter-chip" data-category="discriminant">Discriminants</button>
+        <button class="filter-chip" data-category="troncon">Tronçons</button>
+        <button class="filter-chip" id="btnOpenChantiers" aria-haspopup="dialog">Chantiers</button>
+        <button class="filter-chip" data-category="leurre">Itinéraires</button>
+        <button class="filter-chip" data-category="mobile">Mobiles</button>
       </nav>
     </header>
 
     <!-- Boutons flottants carte -->
     <aside class="map-fab-stack">
-      <button class="fab-btn" id="btnToggleTile" title="Changer de fond de carte (Google Maps, Satellite, Nuit)" aria-label="Changer de fond de carte">🚦</button>
-      <button class="fab-btn" id="btnRecenter" title="Centrer sur ma position" aria-label="Centrer sur ma position">🎯</button>
+      <button class="fab-btn" id="btnToggleTile" title="Changer de fond de carte" aria-label="Changer de fond de carte">◫</button>
+      <button class="fab-btn" id="btnRecenter" title="Centrer sur ma position" aria-label="Centrer sur ma position">⌖</button>
     </aside>
 
     <!-- Aperçu alerte en mode carte -->
@@ -69,6 +72,18 @@
       <div class="alert-distance-counter" id="mapAlertDist">-- m</div>
     </section>
 
+    <section class="journey-sheet" aria-label="Votre trajet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="journey-heading"><div><p class="eyebrow">VOTRE COMPAGNON DE ROUTE</p><h1 id="journeyTitle">On prend la route ?</h1></div><span class="journey-arrow" aria-hidden="true">↗</span></div>
+      <p class="journey-description" id="journeyDescription">Votre position sert à vous situer et à estimer la voie via OSRM.</p>
+      <div class="journey-metrics"><div><strong id="journeySpeed">—</strong><span>km/h · GPS</span></div><div><strong id="journeyCount">—</strong><span>points dans la base</span></div><div><strong id="journeyNetwork">En ligne</strong><span id="journeyDataStatus">Données en chargement</span></div></div>
+      <button class="start-drive" id="btnStartDrive"><span>Commencer le trajet</span><span aria-hidden="true">↗</span></button>
+      <p class="journey-note" id="journeyNote" role="status">Préparez votre trajet à l’arrêt.</p>
+    </section>
+    <nav class="bottom-nav" aria-label="Navigation principale"><button class="selected" id="navMap" aria-current="page"><span aria-hidden="true">◈</span>Explorer</button><button id="navDrive"><span aria-hidden="true">↗</span>Conduire</button><button id="navSources"><span aria-hidden="true">▤</span>Sources</button><button id="navSettings"><span aria-hidden="true">☷</span>Réglages</button></nav>
+    <dialog id="installDialog" aria-labelledby="installTitle"><div class="modal-header"><h2 id="installTitle">À portée de pouce.</h2><button class="btn-close-modal" data-close="installDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>Retrouvez Fou du Volant directement sur votre écran d’accueil.</p><ol class="install-steps"><li>Ouvrez cette page dans <strong>Safari</strong>.</li><li>Touchez <strong>Partager</strong>, puis <strong>Sur l’écran d’accueil</strong>.</li><li>Activez <strong>Ouvrir comme app web</strong> et touchez Ajouter.</li></ol><p class="muted">Le suivi fonctionne tant que l’application reste visible. Le fond de carte nécessite Internet.</p><a href="https://support.apple.com/fr-fr/guide/iphone/iphea86e5236/ios" target="_blank" rel="noopener">Le guide Apple ↗</a></div></dialog>
+    <dialog id="sourcesDialog" aria-labelledby="sourcesTitle"><div class="modal-header"><h2 id="sourcesTitle">Des sources, pas des promesses.</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>La base embarquée est une photographie de données. Elle ne prouve ni la présence actuelle d’un dispositif, ni la limitation applicable à toute une route.</p><a class="source-link" href="https://www.data.gouv.fr/datasets/radars-automatiques" target="_blank" rel="noopener">data.gouv.fr <small>Données publiques · vérifier la date de la ressource ↗</small></a><a class="source-link" href="https://www.securite-routiere.gouv.fr/radars/carte-des-radars" target="_blank" rel="noopener">Sécurité routière <small>Carte et informations officielles ↗</small></a><a class="source-link" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19460" target="_blank" rel="noopener">Règles de circulation <small>Vitesse et équipements d’alerte ↗</small></a><p class="muted">Les signalements sont enregistrés uniquement sur cet appareil et expirent après 3 heures. Le nom de voie est estimé par le service public OSRM, auquel votre position est transmise pendant le trajet.</p></div></dialog>
+    <dialog id="chantiersDialog" aria-labelledby="chantiersTitle"><div class="modal-header"><h2 id="chantiersTitle">Radars de chantier</h2><button class="btn-close-modal" data-close="chantiersDialog" aria-label="Fermer">×</button></div><div class="modal-body"><p>Fiches d’emplacements publiés. Ces appareils peuvent être déplacés : leur présence actuelle n’est pas confirmée.</p><p class="muted">Les 458 itinéraires de contrôle de la base sont consultables avec le filtre « Itinéraires ». Ce ne sont pas 458 radars de chantier.</p><div id="chantiersList" role="status">Chargement des fiches…</div><button id="btnRetryChantiers" class="start-drive" hidden>Réessayer</button><button id="btnShowMappedChantiers" class="secondary-action">Voir les points de chantier localisés</button><p class="muted" id="chantiersMapCount"></p></div></dialog>
     <!-- MODE COCKPIT OLED (HUD EN CONDUITE) -->
     <main class="cockpit-view" id="cockpitView" aria-label="Cockpit HUD">
       <!-- En-tête HUD -->
@@ -90,7 +105,7 @@
         </div>
 
         <div class="speedometer-block">
-          <div class="speed-value" id="hudSpeed">0</div>
+          <div class="speed-value" id="hudSpeed">—</div>
           <div class="speed-unit">KM/H</div>
           <div class="gps-badge">
             <div class="gps-dot" id="hudGpsDot"></div>
@@ -116,7 +131,7 @@
       <!-- Bouton Signalement 1-Tap au pouce -->
       <footer class="cockpit-bottom">
         <button class="btn-report-xxl" id="btnHudReport">
-          <span aria-hidden="true">🚨</span> SIGNALER CONTRÔLE / DANGER
+          <span aria-hidden="true">🚨</span> SIGNALER UN ÉVÉNEMENT
         </button>
       </footer>
     </main>
@@ -144,14 +159,11 @@
             <div class="settings-row">
               <div class="settings-label">
                 <span class="settings-label-title">Fond de carte</span>
-                <span class="settings-label-desc">Cartographie libre sans clé API</span>
+                <span class="settings-label-desc">Attributions affichées sur la carte</span>
               </div>
               <select id="cfgTileLayer" style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:6px 8px; font-size:13px; color:var(--text);">
-                <option value="google_traffic">🚦 Google Maps Trafic en direct</option>
-                <option value="google_hybrid">🛰️ Google Maps Satellite HD</option>
-                <option value="google_roads">🛣️ Google Maps Routier</option>
-                <option value="dark_esri">🌙 Sombre Nuit Épuré (Esri Dark)</option>
-                <option value="osmfr">🇫🇷 OpenStreetMap France</option>
+                <option value="dark_esri">Carte sombre · Esri</option>
+                <option value="osm">Carte claire · OpenStreetMap</option>
               </select>
             </div>
             <div class="settings-row">
@@ -193,7 +205,7 @@
                 <span class="settings-label-title">Base officielle Sécurité Routière</span>
                 <span class="settings-label-desc" id="statOfficialDate">11 juillet 2025</span>
               </div>
-              <span class="settings-badge-ok">Officiel gouv.fr</span>
+              <span class="settings-badge-ok">Base embarquée</span>
             </div>
             <div class="settings-row">
               <div class="settings-label">
@@ -203,10 +215,10 @@
             </div>
             <div class="settings-row">
               <div class="settings-label">
-                <span class="settings-label-title">Radars autonomes & chantiers</span>
-                <span class="settings-label-desc" id="statChantierRadars">458 zones actives</span>
+                <span class="settings-label-title">Points de chantier localisés</span>
+                <span class="settings-label-desc" id="statChantierRadars">Aucune présence en direct garantie</span>
               </div>
-              <span class="settings-badge-chantier">🚧 458</span>
+
             </div>
             <div class="settings-row">
               <div class="settings-label">
@@ -261,7 +273,7 @@
         <div class="dropzone-container" id="lufopDropzone">
           <span class="dropzone-icon" aria-hidden="true">📥</span>
           <p class="dropzone-text">
-            <strong>Glissez-déposez vos fichiers ici</strong><br>
+            <strong>Sélectionnez vos fichiers</strong><br>
             ou cliquez pour sélectionner (ASC, CSV, GPX, KML)
           </p>
           <input type="file" id="lufopFileInput" accept=".asc,.csv,.gpx,.kml" multiple style="display:none;">
@@ -271,8 +283,8 @@
   </div>
 
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="./vendor/leaflet/leaflet.js" crossorigin=""></script>
   <!-- Application ES Module -->
-  <script type="module" src="./js/app.js?v=3.1.0"></script>
+  <script type="module" src="./js/app.js?v=4.0.0"></script>
 </body>
 </html>

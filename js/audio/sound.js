@@ -34,6 +34,11 @@ export class SoundEngine {
     state.on('overspeedChanged', (isOver) => this.handleOverspeed(isOver));
   }
 
+  unlock() {
+    getAudioContext();
+    this.initVoice();
+  }
+
   initVoice() {
     if (!('speechSynthesis' in window)) return;
 

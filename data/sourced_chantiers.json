@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "description": "Sélection de fiches documentaires, sans confirmation de présence actuelle. Aucune coordonnée estimée.",
+  "records": [
+    {
+      "id": "ra-7895",
+      "commune": "Reims",
+      "departement": "51",
+      "route": "A344",
+      "installation_date": "2026-03-31",
+      "nombre_appareils_annonce": 2,
+      "source_url": "https://www.radars-auto.com/emplacements/marne/reims/7895-radar-autonome-a344/",
+      "source_name": "Radars-Auto",
+      "source_consulted_on": "2026-11-08",
+      "presence_status": "unconfirmed",
+      "coordinate_status": "not_published",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": "ra-8006",
+      "commune": "Viais · Pont-Saint-Martin",
+      "departement": "44",
+      "route": "D178",
+      "installation_date": "2026-08-04",
+      "source_url": "https://www.radars-auto.com/emplacements/loire-atlantique/pont-saint-martin/8006-radar-autonome-viais-d178/",
+      "source_name": "Radars-Auto",
+      "source_consulted_on": "2026-11-08",
+      "presence_status": "unconfirmed",
+      "coordinate_status": "not_published",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "id": "ra-le-cours",
+      "commune": "Le Cours",
+      "departement": "56",
+      "route": "N166",
+      "installation_date": "2026-10-14",
+      "source_url": "https://www.radars-auto.com/emplacements/morbihan/radars-autonomes/",
+      "source_name": "Radars-Auto",
+      "source_consulted_on": "2026-11-08",
+      "presence_status": "unconfirmed",
+      "coordinate_status": "not_published",
+      "lat": null,
+      "lng": null
+    }
+  ]
+}

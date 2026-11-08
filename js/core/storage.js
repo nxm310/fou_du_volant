@@ -65,6 +65,7 @@ class StorageManager {
         official_source: metadata.official_source || 'Ministère de l\'Intérieur / Sécurité Routière',
         total: radars.length,
         chantier_count: metadata.chantier_count || 0,
+        itinerary_count: metadata.itinerary_count || 0,
         stats: metadata.stats || {},
         version: metadata.version || '3.1.0'
       });

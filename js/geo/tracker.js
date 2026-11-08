@@ -97,6 +97,7 @@ export class GeoTracker {
   }
 
   stop() {
+    this.isActive = false;
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
@@ -105,10 +106,14 @@ export class GeoTracker {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
     }
-    this.isActive = false;
+    clearTimeout(autoCarModeTimer);
+    autoCarModeTimer = null;
+    lastPosition = null;
+    state.setGpsStatus({ active: false, error: null, message: 'Trajet en pause' });
   }
 
   handleSuccess(position, isHighAccuracy = true) {
+    if (!this.isActive) return;
     this.hasFirstFix = true;
     const coords = position.coords;
     const now = Date.now();
@@ -219,14 +224,15 @@ export class GeoTracker {
 
     try {
       const url = `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`;
-      const res = await fetch(url);
+      if (!this.isActive || document.visibilityState === 'hidden') return;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return;
 
       const data = await res.json();
       if (data.waypoints && data.waypoints.length > 0) {
         const wp = data.waypoints[0];
         const rawName = wp.name || '';
-        const refMatch = rawName.match(/\b([A|N|D]\s?\d{1,4}[A-Z]?)\b/i);
+        const refMatch = rawName.match(/\b([AND]\s?\d{1,4}[A-Z]?)\b/i);
         const ref = refMatch ? refMatch[0].toUpperCase().replace(/\s+/g, '') : '';
 
         cachedRoad = {
@@ -269,6 +275,7 @@ export class GeoTracker {
 
     for (const item of candidates) {
       const r = item.radar;
+      if (r.entity_kind === 'itinerary' || r.category === 'leurre' || String(r.id).startsWith('sr_I_')) continue;
       const cat = r.category || 'fixe';
       if (state.settings.filterTypes[cat] === false) continue;
       if (!isRadarAhead(r, pos, pos.heading, pos.speed)) continue;
@@ -279,7 +286,7 @@ export class GeoTracker {
 
     const nearest = activeAlerts.length > 0 ? activeAlerts[0] : null;
 
-    if (nearest && nearest.radar.vitesse) {
+    if (state.settings.overspeedAlert && nearest && nearest.radar.vitesse) {
       const limit = nearest.radar.vitesse;
       const tol = state.settings.toleranceSpeed || 0;
       if (pos.speed > limit + tol) {

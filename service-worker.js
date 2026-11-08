@@ -1,134 +1,55 @@
-// Service Worker - Fou du Volant PWA v3.1.0
-const VERSION = 'v3.1.0';
-const SHELL_CACHE = `fdv-shell-${VERSION}`;
-const RUNTIME_CACHE = `fdv-runtime-${VERSION}`;
-
-const SHELL_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './css/base.css',
-  './css/cockpit.css',
-  './css/map.css',
-  './css/dialogs.css',
-  './js/app.js',
-  './js/core/state.js',
-  './js/core/storage.js',
-  './js/geo/spatial-index.js',
-  './js/geo/corridor.js',
-  './js/geo/tracker.js',
-  './js/audio/sound.js',
-  './js/ui/hud.js',
-  './js/ui/map-view.js',
-  './js/ui/modals.js',
-  './js/ui/wakelock.js',
-  './js/data/radar-service.js',
-  './js/data/lufop-parser.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+// Versioned shell: install atomically, never delete another app's caches.
+const CACHE = 'fdv-shell-v4.1.2';
+const ASSETS = [
+ './data/sourced_chantiers.json', './js/data/data-quality.js', './js/ui/chantiers.js',
+ './', './index.html', './manifest.json', './radars.json',
+ './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png',
+ './css/base.css', './css/cockpit.css', './css/map.css', './css/dialogs.css', './css/iphone.css',
+ './vendor/leaflet/leaflet.css', './vendor/leaflet/leaflet.js',
+ './js/app.js', './js/core/state.js', './js/core/storage.js',
+ './js/geo/spatial-index.js', './js/geo/corridor.js', './js/geo/tracker.js',
+ './js/audio/sound.js', './js/ui/hud.js', './js/ui/map-view.js', './js/ui/modals.js',
+ './js/ui/wakelock.js', './js/ui/mobile.js', './js/data/radar-service.js', './js/data/lufop-parser.js'
 ];
-
-self.addEventListener('install', (e) => {
-  self.skipWaiting();
-  e.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS).catch((err) => {
-      console.warn('Erreur mise en cache initiale :', err);
-    }))
-  );
+self.addEventListener('install', event => {
+ event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
 });
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', event => {
+ event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('fdv-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
-self.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-
-  if (!url.protocol.startsWith('http')) return;
-
-  // 1. Navigation & HTML : Stale-While-Revalidate avec fallback cache
-  if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/' || url.pathname.endsWith('/fou_du_volant/')) {
-    e.respondWith(
-      fetch(req).then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put(req, clone));
-        }
-        return res;
-      }).catch(async () => {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-        const indexCached = await caches.match('./index.html');
-        if (indexCached) return indexCached;
-        return new Response('Mode hors-ligne', { status: 503, headers: { 'Content-Type': 'text/plain' } });
-      })
-    );
-    return;
-  }
-
-  // 2. Fichier de données radars.json : NETWORK-FIRST systématique avec fallback cache
-  if (url.pathname.endsWith('radars.json')) {
-    e.respondWith(
-      fetch(req).then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put(req, clone));
-        }
-        return res;
-      }).catch(() => caches.match(req))
-    );
-    return;
-  }
-
-  // 3. Tuiles de carte (Google Maps, Esri, OSM) : Cache avec fallback réseau
-  if (
-    url.hostname.includes('google.com') ||
-    url.hostname.includes('arcgisonline.com') ||
-    url.hostname.includes('tile.openstreetmap.org') ||
-    url.hostname.includes('tile.openstreetmap.fr')
-  ) {
-    e.respondWith(
-      caches.open(RUNTIME_CACHE).then(async (cache) => {
-        const cached = await cache.match(req);
-        const fetchPromise = fetch(req).then((res) => {
-          if (res.ok) cache.put(req, res.clone());
-          return res;
-        }).catch(() => null);
-
-        if (cached) return cached;
-        const res = await fetchPromise;
-        return res || new Response('', { status: 408 });
-      })
-    );
-    return;
-  }
-
-  // 4. Fichiers statiques et modules JS : Stale-While-Revalidate pour mise à jour instantanée
-  e.respondWith(
-    caches.match(req).then((cached) => {
-      const fetchPromise = fetch(req).then((res) => {
-        if (res.ok && (url.origin === location.origin || url.hostname.includes('unpkg.com'))) {
-          const clone = res.clone();
-          caches.open(SHELL_CACHE).then((c) => c.put(req, clone));
-        }
-        return res;
-      }).catch(() => null);
-
-      return cached || fetchPromise || new Response('Ressource non disponible', { status: 404 });
-    })
-  );
+self.addEventListener('fetch', event => {
+ const request = event.request;
+ const url = new URL(request.url);
+ // Let the browser honour each tile provider's own cache policy. No tile prefetch.
+ if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+ if (!url.href.startsWith(self.registration.scope)) return;
+ const canonical = new URL(url); canonical.search = '';
+ if (url.pathname.endsWith('/radars.json')) {
+   event.respondWith((async () => {
+     const cache = await caches.open(CACHE);
+     try {
+       const response = await fetch(request);
+       if (!response.ok) throw new Error('Data unavailable');
+       // Validate before replacing the offline snapshot.
+       const data = await response.clone().json();
+       if (!Array.isArray(data.radars) || !data.radars.length) throw new Error('Invalid data');
+       await cache.put(canonical.href, response.clone());
+       return response;
+     } catch {
+       return await cache.match(canonical.href) || new Response('Données indisponibles', { status: 503 });
+     }
+   })());
+   return;
+ }
+ // Keep a coherent shell version until all tabs using it are closed.
+ event.respondWith((async () => {
+   const cache = await caches.open(CACHE);
+   const cached = await cache.match(canonical.href);
+   if (cached) return cached;
+   try { return await fetch(request); }
+   catch {
+     if (request.mode === 'navigate') return await cache.match('./index.html');
+     return new Response('Ressource indisponible hors ligne', { status: 503 });
+   }
+ })());
 });

@@ -14,35 +14,16 @@ let isUserInteracting = false;
 let activeCategoryFilter = 'all';
 
 export const TILE_PROVIDERS = {
-  google_traffic: {
-    name: 'Google Maps Trafic Direct',
-    icon: '🚦',
-    url: 'https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
-  },
-  google_hybrid: {
-    name: 'Google Maps Satellite HD',
-    icon: '🛰️',
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
-  },
-  google_roads: {
-    name: 'Google Maps Routier',
-    icon: '🛣️',
-    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, subdomains: ['0', '1', '2', '3'] }
-  },
   dark_esri: {
     name: 'Sombre Nuit Épuré (Esri Dark)',
     icon: '🌙',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    options: { maxZoom: 16 }
+    options: { maxZoom: 16, attribution: 'Tiles &copy; Esri — Esri, DeLorme, NAVTEQ' }
   },
-  osmfr: {
-    name: 'OpenStreetMap France',
-    icon: '🇫🇷',
-    url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
-    options: { maxZoom: 20 }
+  osm: {
+    name: 'OpenStreetMap', icon: '◫',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
   }
 };
 
@@ -58,6 +39,10 @@ const CATEGORY_COLORS = {
   leurre: '#a0aab2',
   mobile: '#e63946'
 };
+
+function safeRadar(r) {
+  return Object.fromEntries(Object.entries(r).map(([key, value]) => [key, typeof value === 'string' ? value.replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c])) : value]));
+}
 
 export class MapView {
   constructor() {
@@ -78,17 +63,18 @@ export class MapView {
     // Initialisation centrée sur la France
     map = L.map('mapContainer', {
       zoomControl: false,
-      attributionControl: false
+      attributionControl: true
     }).setView([46.603354, 1.888334], 6);
 
     // Chargement du fond de carte initial (Google Maps Trafic par défaut)
-    this.setTileLayer(state.settings.mapTileLayer || 'google_traffic');
+    this.setTileLayer(state.settings.mapTileLayer || 'dark_esri');
 
     // Calques séparés pour les corridors (polylignes) et les marqueurs
     corridorLayer = L.layerGroup().addTo(map);
     markerLayer = L.layerGroup().addTo(map);
 
-    map.on('movestart', () => { isUserInteracting = true; });
+    map.on('dragstart', () => { isUserInteracting = true; });
+    state.on('carModeChanged', () => setTimeout(() => map.invalidateSize(), 100));
     map.on('moveend', () => {
       this.renderVisibleMarkers();
     });
@@ -96,7 +82,7 @@ export class MapView {
 
   setTileLayer(providerKey) {
     if (!map) return;
-    const provider = TILE_PROVIDERS[providerKey] || TILE_PROVIDERS.google_traffic;
+    const provider = TILE_PROVIDERS[providerKey] || TILE_PROVIDERS.dark_esri;
 
     if (currentTileLayer) {
       map.removeLayer(currentTileLayer);
@@ -149,7 +135,7 @@ export class MapView {
     if (btnTile) {
       btnTile.addEventListener('click', () => {
         const keys = Object.keys(TILE_PROVIDERS);
-        const current = state.settings.mapTileLayer || 'google_traffic';
+        const current = state.settings.mapTileLayer || 'dark_esri';
         const nextIdx = (keys.indexOf(current) + 1) % keys.length;
         const nextKey = keys[nextIdx];
         this.setTileLayer(nextKey);
@@ -165,12 +151,25 @@ export class MapView {
       btnToHud.addEventListener('click', () => state.toggleCarMode(true));
     }
 
+    document.getElementById('btnShowMappedChantiers').addEventListener('click', () => {
+      document.getElementById('chantiersDialog').close();
+      activeCategoryFilter = 'chantier';
+      document.querySelectorAll('.filter-chip[data-category]').forEach(c => {
+        c.classList.remove('active'); c.setAttribute('aria-pressed', 'false');
+      });
+      document.getElementById('btnOpenChantiers').classList.add('active');
+      const points = state.runtime.radars.filter(r => r.category === 'chantier');
+      if (map && points.length) map.fitBounds(L.latLngBounds(points.map(r => [r.lat, r.lng])), { maxZoom: 12, padding: [60, 60] });
+      this.renderVisibleMarkers();
+    });
     // Gestion des puces de filtres
-    const chips = document.querySelectorAll('.filter-chip');
+    const chips = document.querySelectorAll('.filter-chip[data-category]');
     chips.forEach((chip) => {
       chip.addEventListener('click', () => {
-        chips.forEach((c) => c.classList.remove('active'));
+        document.getElementById('btnOpenChantiers').classList.remove('active');
+        chips.forEach((c) => { c.classList.remove('active'); c.setAttribute('aria-pressed', 'false'); });
         chip.classList.add('active');
+        chip.setAttribute('aria-pressed', 'true');
         activeCategoryFilter = chip.dataset.category || 'all';
 
         if (activeCategoryFilter === 'chantier' && map) {
@@ -289,6 +288,7 @@ export class MapView {
   renderChantierMarker(r, drawCorridor = true) {
     if (!markerLayer) return;
 
+    r = safeRadar(r);
     // Tracé de la zone de chantier / itinéraire sécurisé
     if (drawCorridor && corridorLayer && r.geo_points && r.geo_points.length > 1) {
       const poly = L.polyline(r.geo_points, {
@@ -327,6 +327,8 @@ export class MapView {
         ${r.longueur_troncon_km ? `<div style="font-size:12px; color:#d97706; font-weight:700; margin-bottom:3px;">Longueur de zone : ${r.longueur_troncon_km} km</div>` : ''}
         ${r.direction ? `<div style="font-size:11px; color:#666;">Sens : ${r.direction}</div>` : ''}
         ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
+        ${r.entity_kind === 'itinerary' ? '<p style="font-size:12px;margin-top:8px">Itinéraire de contrôle, pas un appareil localisé. Présence non confirmée.</p>' : ''}
+        ${r.source_url?.startsWith('https://') ? `<a href="${r.source_url}" target="_blank" rel="noopener" style="font-size:12px">Consulter la source</a>` : ''}
       </div>
     `);
 
@@ -335,6 +337,7 @@ export class MapView {
 
   renderStandardMarker(r) {
     if (!markerLayer) return;
+    r = safeRadar(r);
     const cat = r.category || 'fixe';
     const color = CATEGORY_COLORS[cat] || '#3a86ff';
 
@@ -364,6 +367,8 @@ export class MapView {
         ${r.emplacement ? `<div style="font-size:12px; color:#555; margin-bottom:2px;">${r.emplacement}</div>` : ''}
         ${r.direction ? `<div style="font-size:11px; color:#666;">Contrôle : ${r.direction}</div>` : ''}
         ${r.equipement ? `<div style="font-size:11px; color:#888; margin-top:2px;">Dispositif : ${r.equipement}</div>` : ''}
+        ${r.entity_kind === 'itinerary' ? '<p style="font-size:12px;margin-top:8px">Itinéraire de contrôle, pas un appareil localisé. Présence non confirmée.</p>' : ''}
+        ${r.source_url?.startsWith('https://') ? `<a href="${r.source_url}" target="_blank" rel="noopener" style="font-size:12px">Consulter la source</a>` : ''}
       </div>
     `);
 
@@ -379,6 +384,29 @@ export class MapView {
     markerLayer.clearLayers();
     if (corridorLayer) {
       corridorLayer.clearLayers();
+    }
+
+    // Aggregate at overview zooms instead of hiding points behind category quotas.
+    if (zoom < 10) {
+      const cells = new Map();
+      for (const radar of state.runtime.radars) {
+        if (activeCategoryFilter !== 'all' && radar.category !== activeCategoryFilter) continue;
+        if (!bounds.contains([radar.lat, radar.lng])) continue;
+        const point = map.project([radar.lat, radar.lng], zoom);
+        const key = `${Math.floor(point.x / 56)}:${Math.floor(point.y / 56)}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(radar);
+      }
+      for (const group of cells.values()) {
+        if (group.length === 1) { this.renderStandardMarker(group[0]); continue; }
+        const lat = group.reduce((sum, r) => sum + r.lat, 0) / group.length;
+        const lng = group.reduce((sum, r) => sum + r.lng, 0) / group.length;
+        const icon = L.divIcon({ className: 'radar-cluster', html: `<span>${group.length}</span>`, iconSize: [38,38], iconAnchor: [19,19] });
+        const marker = L.marker([lat, lng], {icon, title: `${group.length} points · agrandir`});
+        marker.on('click', () => map.setView([lat,lng], Math.min(zoom + 2, 16)));
+        markerLayer.addLayer(marker);
+      }
+      return;
     }
 
     // 1. Filtre spécifique "Chantiers" : afficher tous les chantiers dans la vue avec tracés
