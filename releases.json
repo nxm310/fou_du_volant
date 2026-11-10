@@ -1,6 +1,13 @@
 {
-  "current": "4.2.2",
+  "current": "4.2.3",
   "history": [
+    {
+      "version": "4.2.3",
+      "date": "2026-11-10",
+      "changes": [
+        "Petit cadran à droite pour la limitation cartographiée de la voie actuelle. Un tiret indique une donnée indisponible ou incertaine."
+      ]
+    },
     {
       "version": "4.2.2",
       "date": "2026-11-08",

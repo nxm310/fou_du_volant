@@ -4,6 +4,7 @@
  * Deux phases d'acquisition : fix réseau ultra-rapide + suivi GPS haute précision
  */
 
+import { clearRoadLimit, refreshRoadLimit } from './road-limit.js';
 import { state } from '../core/state.js';
 import { spatialIndex, haversineMeters, calculateBearing } from './spatial-index.js';
 import { isRadarAhead, isSameRoadOrCompatible } from './corridor.js';
@@ -19,6 +20,10 @@ export class GeoTracker {
     this.isActive = false;
     this.hasFirstFix = false;
     this.retryTimeout = null;
+    state.on('carModeChanged', active => {
+      if (!active) clearRoadLimit();
+      else if (this.isActive && state.runtime.gpsActive) refreshRoadLimit(state.runtime.userPos);
+    });
   }
 
   isSecure() {
@@ -97,6 +102,7 @@ export class GeoTracker {
   }
 
   stop() {
+    clearRoadLimit();
     this.isActive = false;
     if (watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
@@ -134,14 +140,14 @@ export class GeoTracker {
           coords.longitude
         );
         speedKmh = Math.round((dist / dt) * 3.6);
-        if (heading === null || isNaN(heading)) {
-          heading = calculateBearing(
-            lastPosition.lat,
-            lastPosition.lng,
-            coords.latitude,
-            coords.longitude
-          );
-        }
+
+      }
+    }
+
+    if (!Number.isFinite(heading) && lastPosition && now - lastPosition.time < 10000) {
+      const distance = haversineMeters(lastPosition.lat, lastPosition.lng, coords.latitude, coords.longitude);
+      if (distance > Math.max(10, coords.accuracy)) {
+        heading = calculateBearing(lastPosition.lat, lastPosition.lng, coords.latitude, coords.longitude);
       }
     }
 
@@ -153,7 +159,7 @@ export class GeoTracker {
       lng: coords.longitude,
       accuracy: accuracy,
       speed: smoothed,
-      heading: (heading !== null && !isNaN(heading)) ? Math.round(heading) : null,
+      heading: Number.isFinite(heading) ? Math.round(heading) : null,
       altitude: coords.altitude ? Math.round(coords.altitude) : null,
       timestamp: now
     };
@@ -173,6 +179,7 @@ export class GeoTracker {
 
     // Détection de la route actuelle (OSRM)
     this.checkRoadSnapping(coords.latitude, coords.longitude, smoothed);
+    if (state.runtime.isCarMode) refreshRoadLimit(posData);
 
     // Gestion du basculement automatique Cockpit HUD
     this.checkAutoCarMode(smoothed);
@@ -182,6 +189,7 @@ export class GeoTracker {
   }
 
   handleError(err) {
+    clearRoadLimit();
     console.warn('Erreur GPS :', err.code, err.message);
     let msg = 'Signal GPS introuvable';
     let errType = 'error';

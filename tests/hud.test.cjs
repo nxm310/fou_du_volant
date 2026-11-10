@@ -12,27 +12,29 @@ function setupDOM(){
  global.localStorage={getItem:()=>null};
  return nodes;
 }
-test('losing GPS clears speed, road and limit instead of displaying previous measurements',async()=>{
+test('losing GPS clears the displayed road limit and speed', async () => {
  setupDOM();
- const {CockpitHUD}=await import('../js/ui/hud.js');
- const hud=new CockpitHUD();
- hud.updatePosition({speed:76,accuracy:8});hud.updateRoad({name:'Route test',ref:'D1'});
- hud.updateAlert({radar:{vitesse:80,type:'Radar fixe'},distance:500});
- assert.equal(hud.signNumEl.textContent,80);
- assert.equal(hud.limitContainer.hidden,false);
- hud.updateGpsStatus({active:false,error:'denied',message:'Localisation refusée'});
- assert.equal(hud.speedEl.textContent,'—');
- assert.equal(hud.roadTextEl.textContent,'Voie non identifiée');
- assert.equal(hud.signNumEl.textContent,'—');
- assert.equal(hud.limitLabel.textContent,'Limite inconnue');
- assert.equal(hud.limitContainer.hidden,true);
- assert.equal(hud.speedArc.attributes['stroke-dasharray'],'0 100');
+ const { CockpitHUD } = await import('../js/ui/hud.js');
+ const hud = new CockpitHUD();
+ hud.updatePosition({ speed: 76, accuracy: 8 });
+ hud.updateRoad({ name: 'Route test', ref: 'D1' });
+ hud.updateRoadLimit(80);
+ hud.updateGpsStatus({ active: false, error: 'denied', message: 'Localisation refusée' });
+ assert.equal(hud.speedEl.textContent, '—');
+ assert.equal(hud.roadTextEl.textContent, 'Voie non identifiée');
+ assert.equal(hud.signNumEl.textContent, '—');
+ assert.equal(hud.signEl.dataset.known, 'false');
+ assert.equal(hud.speedArc.attributes['stroke-dasharray'], '0 100');
 });
-test('a point with an unknown limit never retains the previous speed sign',async()=>{
- setupDOM();const {CockpitHUD}=await import('../js/ui/hud.js');const hud=new CockpitHUD();
- hud.updateAlert({radar:{vitesse:80,type:'Radar fixe'},distance:500});
- hud.updateAlert({radar:{vitesse:null,type:'Signalement'},distance:200});
- assert.equal(hud.signNumEl.textContent,'—');assert.equal(hud.signEl.classList.contains('hidden'),true);
- assert.equal(hud.limitLabel.textContent,'Limite inconnue');
- assert.equal(hud.limitContainer.hidden,true);
+
+test('radar warnings never replace the current road limit', async () => {
+ setupDOM();
+ const { CockpitHUD } = await import('../js/ui/hud.js');
+ const hud = new CockpitHUD();
+ hud.updateRoadLimit(50);
+ hud.updateAlert({ radar: { vitesse: 80, type: 'Radar fixe' }, distance: 500 });
+ assert.equal(hud.signNumEl.textContent, 50);
+ assert.match(hud.alertTitle.textContent, /80 km/);
+ hud.updateAlert(null);
+ assert.equal(hud.signNumEl.textContent, 50);
 });

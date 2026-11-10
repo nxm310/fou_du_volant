@@ -33,6 +33,7 @@ class StateStore {
     this.runtime = {
       userPos: null,          // { lat, lng, speed, heading, accuracy, altitude, timestamp }
       smoothedSpeed: 0,       // km/h lissé
+      roadSpeedLimit: null,
       currentRoad: { name: '', ref: '' },
       isCarMode: false,
       activeAlerts: [],       // Radars devant le véhicule
@@ -124,6 +125,12 @@ class StateStore {
     this.runtime.gpsActive = status.active;
     this.runtime.gpsStatus = status;
     this.emit('gpsStatusChanged', status);
+  }
+
+  setRoadSpeedLimit(limit) {
+    if (this.runtime.roadSpeedLimit === limit) return;
+    this.runtime.roadSpeedLimit = limit;
+    this.emit('roadSpeedLimitUpdated', limit);
   }
 
   setRoad(road) {

@@ -1,8 +1,8 @@
 // Minimal driving layout includes portrait and landscape safe areas.
 // Versioned shell: install atomically, never delete another app's caches.
-const CACHE = 'fdv-shell-v4.2.2';
+const CACHE = 'fdv-shell-v4.2.3';
 const ASSETS = [
- './css/driving.css',
+ './css/driving.css', './js/geo/road-limit.js',
  './releases.json', './js/ui/releases.js', './js/ui/sources.js', './js/data/chantier-service.js',
  './data/sourced_chantiers.json', './js/data/data-quality.js', './js/ui/chantiers.js',
  './', './index.html', './manifest.json', './radars.json',

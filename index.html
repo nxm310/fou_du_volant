@@ -16,10 +16,10 @@
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css" crossorigin="">
 
   <!-- Stylesheets modulaires -->
-  <link rel="stylesheet" href="./css/base.css?v=4.2.2">
-  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.2">
-  <link rel="stylesheet" href="./css/map.css?v=4.2.2">
-  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.2">
+  <link rel="stylesheet" href="./css/base.css?v=4.2.3">
+  <link rel="stylesheet" href="./css/cockpit.css?v=4.2.3">
+  <link rel="stylesheet" href="./css/map.css?v=4.2.3">
+  <link rel="stylesheet" href="./css/dialogs.css?v=4.2.3">
   <link rel="stylesheet" href="./css/iphone.css">
   <link rel="stylesheet" href="./css/driving.css">
 </head>
@@ -86,7 +86,7 @@
     <dialog id="sourcesDialog" aria-labelledby="sourcesTitle">
       <div class="modal-header"><h2 id="sourcesTitle">Sources & mises à jour</h2><button class="btn-close-modal" data-close="sourcesDialog" aria-label="Fermer">×</button></div>
       <div class="modal-body">
-        <div class="source-version"><span id="sourceAppVersion">Version 4.2.2</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
+        <div class="source-version"><span id="sourceAppVersion">Version 4.2.3</span><button id="btnReleaseHistory" class="text-action">Voir les nouveautés</button></div>
         <button id="btnRefreshSources" class="start-drive">Réactualiser les sources ↻</button>
         <p id="sourcesRefreshStatus" role="status" aria-live="polite" class="muted">Recharge les dernières données publiées avec l’application. Les sites tiers ne sont pas reconsultés en direct.</p>
         <section class="source-dates"><h3>Base cartographique</h3><dl><dt>Date officielle déclarée</dt><dd id="sourceOfficialDate">Chargement…</dd><dt>Fichier préparé le</dt><dd id="sourcePreparedDate">Chargement…</dd><dt>Dernier téléchargement sur cet appareil</dt><dd id="sourceRadarDownloaded">Pas encore effectué</dd></dl></section>
@@ -95,7 +95,7 @@
         <a class="source-link" href="https://www.securite-routiere.gouv.fr/radars/carte-des-radars" target="_blank" rel="noopener">Sécurité routière <small>Carte et informations officielles ↗</small></a>
         <a class="source-link" href="https://www.radars-auto.com/info-radars/radars-autonomes/" target="_blank" rel="noopener">Radars-Auto <small>Source des fiches documentaires de chantier ↗</small></a>
         <a class="source-link" href="https://www.service-public.gouv.fr/particuliers/vosdroits/F19460" target="_blank" rel="noopener">Règles de circulation <small>Vitesse et équipements d’alerte ↗</small></a>
-        <p class="muted">Les données sont indicatives. Les signalements restent sur cet appareil et expirent après 3 heures. Pendant le trajet, OSRM reçoit votre position pour estimer la voie.</p>
+        <p class="muted">Les données sont indicatives. Les signalements restent sur cet appareil et expirent après 3 heures. Pendant le trajet, OSRM reçoit votre position pour estimer la voie. En mode conduite, Valhalla (FOSSGIS) reçoit également la position et le cap GPS pour rechercher la limite cartographiée. Données <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© les contributeurs d’OpenStreetMap</a>. Les panneaux sur la route font foi.</p>
       </div>
     </dialog>
     <dialog id="releaseDialog" aria-labelledby="releaseTitle">
@@ -123,7 +123,12 @@
           <div class="gps-badge"><div class="gps-dot" id="hudGpsDot"></div><span id="hudGpsAccuracy">GPS en attente</span></div>
         </div>
         <div class="drive-road-label"><span class="drive-route-tag" id="hudRoadRef" hidden></span><span class="road-text" id="hudRoadText">Voie non identifiée</span></div>
-        <div class="drive-limit" id="hudLimitContainer" hidden><div class="speed-limit-sign hidden" id="hudSpeedLimitSign" aria-label="Limite inconnue"><span class="speed-limit-number" id="hudSpeedLimitNum">—</span></div><span id="hudLimitLabel">Au radar</span></div>
+        <div class="drive-limit" id="hudLimitContainer">
+          <div class="speed-limit-sign" id="hudSpeedLimitSign" data-known="false" aria-label="Limite de la voie indisponible">
+            <span class="speed-limit-number" id="hudSpeedLimitNum">—</span>
+          </div>
+          <span id="hudLimitLabel">Limite voie</span>
+        </div>
 
       </div>
       <div class="drive-bottom-panel">
@@ -285,6 +290,6 @@
   <!-- Leaflet JS -->
   <script src="./vendor/leaflet/leaflet.js" crossorigin=""></script>
   <!-- Application ES Module -->
-  <script type="module" src="./js/app.js?v=4.2.2"></script>
+  <script type="module" src="./js/app.js?v=4.2.3"></script>
 </body>
 </html>

@@ -16,8 +16,6 @@ export class CockpitHUD {
     this.speedArc = document.getElementById('hudSpeedArc');
     this.tripStatus = document.getElementById('hudTripStatus');
     this.roadRef = document.getElementById('hudRoadRef');
-    this.limitContainer = document.getElementById('hudLimitContainer');
-    this.limitLabel = document.getElementById('hudLimitLabel');
     this.gpsAccEl = document.getElementById('hudGpsAccuracy');
 
     this.alertCard = document.getElementById('hudAlertCard');
@@ -37,6 +35,7 @@ export class CockpitHUD {
     // Écoute du store
     state.on('positionUpdated', (pos) => this.updatePosition(pos));
     state.on('gpsStatusChanged', (status) => this.updateGpsStatus(status));
+    state.on('roadSpeedLimitUpdated', (limit) => this.updateRoadLimit(limit));
     state.on('roadUpdated', (road) => this.updateRoad(road));
     state.on('alertsUpdated', ({ alerts, nearest }) => this.updateAlert(nearest));
     state.on('overspeedChanged', (isOver) => this.updateOverspeed(isOver));
@@ -79,6 +78,7 @@ export class CockpitHUD {
       this.roadTextEl.textContent = 'Voie non identifiée';
       this.roadRef.textContent = '';
       this.roadRef.hidden = true;
+      this.updateRoadLimit(null);
       this.updateAlert(null);
     }
     this.gpsAccEl.textContent = status.active ? `Précision ±${state.runtime.gpsAccuracy || 0} m` : status.error === 'denied' ? 'GPS non autorisé' : 'GPS en attente';
@@ -91,6 +91,7 @@ export class CockpitHUD {
       if (state.runtime.gpsStatus.active && state.runtime.userPos) {
         this.updatePosition(state.runtime.userPos);
         this.updateRoad(state.runtime.currentRoad);
+        this.updateRoadLimit(state.runtime.roadSpeedLimit);
         this.updateAlert(state.runtime.nearestRadar);
       }
       this.view.classList.add('active');
@@ -123,6 +124,13 @@ export class CockpitHUD {
     }
   }
 
+  updateRoadLimit(limit) {
+    const known = Number.isInteger(limit) && limit > 0 && limit <= 130;
+    this.signNumEl.textContent = known ? limit : '—';
+    this.signEl.dataset.known = String(known);
+    this.signEl.setAttribute('aria-label', known ? `Limite cartographiée de la voie : ${limit} km/h` : 'Limite de la voie indisponible');
+  }
+
   updateAlert(nearest) {
     if (!nearest) {
       this.alertCard.className = 'cockpit-alert-card idle';
@@ -130,11 +138,6 @@ export class CockpitHUD {
       this.alertTitle.textContent = state.runtime.gpsStatus.active ? 'Aucune alerte à proximité' : 'Position GPS nécessaire';
       this.alertDist.textContent = '—';
       this.alertBar.style.width = '0%';
-      this.limitContainer.hidden = true;
-      this.signEl.classList.add('hidden');
-      this.signNumEl.textContent = '—';
-      this.signEl.setAttribute('aria-label', 'Limite inconnue');
-      this.limitLabel.textContent = 'Limite inconnue';
       this.view.dataset.overspeed = 'false';
       return;
     }
@@ -144,27 +147,12 @@ export class CockpitHUD {
     const threshold = state.settings.distance;
 
     this.alertIcon.textContent = r.icon || '📷';
-    this.alertTitle.textContent = r.type || 'Radar';
+    this.alertTitle.textContent = (r.type || 'Radar') + (r.vitesse ? ` · limite au point ${r.vitesse} km/h` : '');
     this.alertDist.textContent = dist >= 1000 ? `${(dist / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(dist)} m`;
 
     // Calcul du pourcentage de progression (100% à distance max -> 0% à 0m)
     const pct = Math.max(0, Math.min(100, Math.round((dist / threshold) * 100)));
     this.alertBar.style.width = `${pct}%`;
-
-    // Panneau de limitation de vitesse
-    if (r.vitesse) {
-      this.signNumEl.textContent = r.vitesse;
-      this.limitContainer.hidden = false;
-      this.signEl.classList.remove('hidden');
-      this.signEl.setAttribute('aria-label', `Limite au radar : ${r.vitesse} km/h`);
-      this.limitLabel.textContent = 'Au radar';
-    } else {
-      this.limitContainer.hidden = true;
-      this.signEl.classList.add('hidden');
-      this.signNumEl.textContent = '—';
-      this.signEl.setAttribute('aria-label', 'Limite inconnue');
-      this.limitLabel.textContent = 'Limite inconnue';
-    }
 
     this.view.dataset.overspeed = String(state.runtime.isOverspeed);
     if (state.runtime.isOverspeed) {
